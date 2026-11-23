@@ -1,1655 +1,1657 @@
-# Стенд транспорта — этапы 1–6
+# Flight test stand — stages 1–6
 
-## Человек: мощность по длительности, перегрузки по осям и времени (2026-11-23)
+> The check scripts (`npm run check`, `npm run physics`) print outcomes in Russian: ПРОЙДЕН = PASS, РАСХОЖДЕНИЕ = DIVERGENCE (a known, explained mismatch with measurements), ПРОВАЛ = FAIL, СПРАВОЧНО = INFO. The stand UI has a Russian/English switch.
+
+## Human: power vs. duration, g-loads by axis and time (2026-11-23)
 
 ```bash
-VALIDATE_ONLY=human npm run physics -- --validate   # сверки этого раздела (секунды)
-npm run check   # всё вместе: 493 проверки — 382 проходят, 111 «РАСХОЖДЕНИЕ», провалов нет
+VALIDATE_ONLY=human npm run physics -- --validate   # checks for this section (seconds)
+npm run check   # everything together: 493 checks — 382 pass, 111 "DIVERGENCE", no failures
 ```
 
-В полном прогоне один провал: в тексте вердикта было число, которого нет в телеметрии. Его исправили после прогона
-и проверили отдельно. Вердикты прежних испытаний новая модель экипажа не изменила.
+The full run had one failure: a verdict text contained a number that was not in the telemetry. It was fixed after the run
+and checked separately. The new crew model did not change the verdicts of earlier tests.
 
-### Что добавлено в ядро
+### What was added to the core
 
-- **Человек как двигатель** (`powerplant.engine: { type: 'human', level: 'healthy' | 'champion', durationS }`).
-  - Доступная мощность — сколько человек держит заданное время. Источник — кривые NASA SP-3006 (1973), рис. 18-15: здоровые мужчины и чемпионы.
-  - Время работы в отчёте — по обратной кривой: сколько выдержит при нужной мощности.
-- **Перегрузки экипажа по осям тела и длительности** (`src/core/crew.ts`, `CrewLoad`). Раньше был модуль перегрузки против одного порога, теперь:
-  - **Длительные.** Средние по осям ±Gx, Gy, ±Gz за окна от 1 до 1200 с сравниваются с двумя кривыми:
-    - норма NASA-STD-3001 (ред. C, 2022) для здорового экипажа — «тяжело»;
-    - средняя переносимость здоровых людей (Chambers 1963, по SP-3006) — «опасно».
-  - **Потеря сознания.** +Gz в среднем за 5 с от 5,4 g (Cochran 1954, без защиты) — «аппаратом некому управлять».
-  - **Удар.** Модель Брикли: отклик позвоночника по трём осям, коэффициенты NASA/TM-2013-217380. Сочетание осей β сравнивается с пределами NASA для низкого (< 0,5 %) и среднего (0,5–5 %) риска травмы.
-  - Старые «длительная / пиковая перегрузка» остались в телеметрии для сравнения. В вердикте экипажа называется то, что превысило предел: ось, окно, норма, удар, вибрация.
+- **Human as an engine** (`powerplant.engine: { type: 'human', level: 'healthy' | 'champion', durationS }`).
+  - Available power is what a person can sustain for a given time. Source: NASA SP-3006 (1973) curves, fig. 18-15: healthy men and champions.
+  - Endurance in the report comes from the inverse curve: how long the person can last at the required power.
+- **Crew g-loads by body axis and duration** (`src/core/crew.ts`, `CrewLoad`). Previously there was a g-load module checked against a single threshold; now:
+  - **Sustained.** Averages along ±Gx, Gy, ±Gz over windows from 1 to 1200 s are compared against two curves:
+    - the NASA-STD-3001 limit (rev. C, 2022) for a healthy crew — "severe";
+    - average tolerance of healthy people (Chambers 1963, via SP-3006) — "dangerous".
+  - **Loss of consciousness (G-LOC).** +Gz averaged over 5 s from 5.4 g (Cochran 1954, unprotected) — "no one left to fly the aircraft".
+  - **Impact.** Brinkley model: spinal response along three axes, coefficients from NASA/TM-2013-217380. The combined axis index β is compared with NASA limits for low (< 0.5 %) and moderate (0.5–5 %) injury risk.
+  - The old "sustained / peak g-load" values remain in the telemetry for comparison. The crew verdict names whatever exceeded its limit: axis, window, limit, impact, vibration.
 
-### Что показали сверки
+### What the checks showed
 
-| Сверка | Итог |
+| Check | Result |
 | --- | --- |
-| Мощность здорового человека (SP-3006) против Whitt & Wilson 1982, 5 точек | пройдено, 0–4 % |
-| Мощность чемпиона против велосипедистов-профессионалов (Pinot & Grappe 2014, Valenzuela 2022, Gallo 2022, Wilkie 1960), 14 точек | 10 пройдено; 4 **расхождения** на усилиях 30 с – 5 мин: у современных гонщиков на 11–18 % больше |
-| Daedalus: 3,1 Вт/кг 6 часов | справочно: продолжение кривой — 227 Вт (за краем данных) |
-| Переносимость +Gz против лётчиков-испытателей (Chambers & Hitchcock 1963): 9 g — 8 с, 8 g — 29 с, 6 g — 157 с | 2 пройдено (3 и 2 %), 1 **расхождение** +16 % на 8 с |
-| Модель Брикли против опытов на ракетных тележках (Стэпп; SP-3006), 7 опытов | все опыты с травмой — выше предела низкого риска: пройдено |
+| Healthy human power (SP-3006) vs. Whitt & Wilson 1982, 5 points | pass, 0–4 % |
+| Champion power vs. professional cyclists (Pinot & Grappe 2014, Valenzuela 2022, Gallo 2022, Wilkie 1960), 14 points | 10 pass; 4 **divergences** at efforts of 30 s – 5 min: modern racers are 11–18 % higher |
+| Daedalus: 3.1 W/kg for 6 hours | info: extending the curve gives 227 W (beyond the data) |
+| +Gz tolerance vs. test pilots (Chambers & Hitchcock 1963): 9 g — 8 s, 8 g — 29 s, 6 g — 157 s | 2 pass (3 and 2 %), 1 **divergence** +16 % at 8 s |
+| Brinkley model vs. rocket sled tests (Stapp; SP-3006), 7 tests | all tests with injury are above the low-risk limit: pass |
 
-**Справочно.** Перенесённые без вреда удары модель Брикли тоже относит к среднему риску: −Gx 45 g за 0,09 с и +Gx 30 g за 0,11 с. Пределы NASA — для проектирования, с запасом. Форма импульсов в опытах не записана: взята трапеция.
+**Info.** The Brinkley model also places impacts survived without harm in the moderate-risk band: −Gx 45 g for 0.09 s and +Gx 30 g for 0.11 s. NASA limits are for design, with margin. The pulse shapes in the tests were not recorded: a trapezoid is assumed.
 
-**Потеря сознания** по разным центрифугам: Cochran 5,4 ± 0,9 g, Zarriello 5,3 ± 0,8, Kasture 4,89 ± 0,67, Chiang 5,1 ± 0,9. У остальных конечные точки другие: потеря периферического или центрального зрения, она наступает раньше.
+**Loss of consciousness** across different centrifuges: Cochran 5.4 ± 0.9 g, Zarriello 5.3 ± 0.8, Kasture 4.89 ± 0.67, Chiang 5.1 ± 0.9. The others use different endpoints: loss of peripheral or central vision, which comes earlier.
 
-### Ограничения
+### Limitations
 
-- Мощность человека от высоты не зависит. Выше 1500 м аэробная мощность падает, в модели — нет. Масса людей в кривых SP-3006 не указана: мощность абсолютная, в ваттах.
-- Норма NASA предполагает привязную систему и противоперегрузочное бельё. Переносимость Chambers — добровольная, у здоровых. По Gy кривой переносимости нет, вместо неё взят аварийный предел NASA.
-- Сознание при отрицательной перегрузке (−Gz) отдельно не оценивается — только по кривым.
-- Человек сидит лицом вперёд; оси тела совпадают с осями корпуса.
+- Human power does not depend on altitude. Above 1500 m aerobic power drops; in the model it does not. Body mass is not given in the SP-3006 curves: power is absolute, in watts.
+- The NASA limit assumes a restraint harness and an anti-g suit. Chambers tolerance is voluntary, for healthy subjects. There is no tolerance curve for Gy; the NASA emergency limit is used instead.
+- Consciousness under negative g (−Gz) is not assessed separately — only via the curves.
+- The occupant sits facing forward; body axes coincide with the airframe axes.
 
-## Конструкция: флаттер и дивергенция крыла, слоистые композиты (2026-11-23)
+## Structure: wing flutter and divergence, laminated composites (2026-11-23)
 
 ```bash
-VALIDATE_ONLY=structure npm run physics -- --validate   # сверки этого раздела (секунды)
-npm run check   # всё вместе: 470 проверок — 364 проходят, 106 «РАСХОЖДЕНИЕ» (полный прогон 2026-11-23 — 469 проверок; сверка флаттера Cessna с подкосом добавлена после него и прошла отдельно; проверка «расчёт влияния за 60 с» в том прогоне не уложилась — 130 с при занятом другими программами процессоре)
+VALIDATE_ONLY=structure npm run physics -- --validate   # checks for this section (seconds)
+npm run check   # everything together: 470 checks — 364 pass, 106 "DIVERGENCE" (full run 2026-11-23 — 469 checks; the strut-braced Cessna flutter check was added after it and passed separately; the "influence calculation within 60 s" check did not fit in that run — 130 s with the CPU busy with other programs)
 ```
 
-### Что добавлено в ядро
+### What was added to the core
 
-- **Флаттер и дивергенция крыла** (`src/core/aeroelastic.ts`).
-  - Балка с упругой осью; формы колебаний — методом конечных элементов (изгиб — балка Эйлера — Бернулли, кручение — стержень, связь — через смещение центра масс), берутся четыре низшие.
-  - Опоры: корень — заделка или шарнир; подкос (`structure.strut`) — опора по вертикали в точке крепления на хорде: она связывает прогиб с закручиванием.
-  - Нестационарная аэродинамика Теодорсена по полосам.
-  - Решение p-k методом: на каждой скорости ищутся корни характеристического многочлена. Флаттер — скорость, где колебание перестаёт затухать. Дивергенция — где кручение теряет статическую устойчивость.
-- **Флаттер в стенде** (`Sim.flutterInfo`). Считается у неподвижного крыла с заданным кессоном `structure.torsionBox` — обшивкой между лонжеронами, работающей на кручение. Из конструкции детали берутся:
-  - EI — лонжерона;
-  - GJ — кессона по формуле Бредта;
-  - упругая ось — середина кессона;
-  - распределение массы — лонжерон на `sparAt`, обшивка по хорде.
+- **Wing flutter and divergence** (`src/core/aeroelastic.ts`).
+  - A beam with an elastic axis; mode shapes by the finite element method (bending — Euler–Bernoulli beam, torsion — a rod, coupling — via the offset of the center of mass); the four lowest are used.
+  - Supports: the root is clamped or hinged; the strut (`structure.strut`) is a vertical support at its attachment point on the chord: it couples deflection with twist.
+  - Theodorsen unsteady aerodynamics, strip by strip.
+  - Solved by the p-k method: at each speed the roots of the characteristic polynomial are found. Flutter is the speed where an oscillation stops decaying. Divergence is where torsion loses static stability.
+- **Flutter in the stand** (`Sim.flutterInfo`). Computed for a stationary wing with a specified torsion box `structure.torsionBox` — the skin between the spars that carries torsion. From the part's structure the following are taken:
+  - EI — of the spar;
+  - GJ — of the torsion box, by the Bredt formula;
+  - elastic axis — the middle of the torsion box;
+  - mass distribution — the spar at `sparAt`, the skin along the chord.
 
-  Без кессона жёсткость на кручение не известна, и флаттер не проверяется.
-- **Cessna 172S: кессон и подкос — оценки** (допущения «Обшивка кессона крыла» и «Крепление подкоса»). Данных нет: руководство Cessna по ремонту конструкции (SESR04) даёт только материалы, жёсткостей крыла и замеров частот нет. Лонжероны на 20 и 65 % хорды, обшивка 0,020 in, подкос к переднему лонжерону на 2,6 м от оси, корень — шарнир. Результат — флаттера крыла нет до 270 м/с, дивергенция — от 690 м/с при любом сочетании оценок (обшивка 0,016–0,025 in, лонжероны ±5 % хорды, подкос ±0,3 м). Это сверка на правдоподобие: самолёт сертифицирован, нормы требуют отсутствия флаттера до 1,2·V_D ≈ 112 м/с. Без подкоса та же консоль дивергирует на 192 м/с, а первая частота падает с 12,8 до 6,5 Гц. Флаттер элеронов (у настоящего самолёта они балансируются грузами) не считается.
-- **Флаттер в вердикте.** Если скорость испытания дошла до скорости флаттера или дивергенции — «Разрушается». Если запас меньше 20 % — предупреждение (CS-23.629 требует 1,2 расчётной скорости пикирования). В отчёте — строка «Флаттер и дивергенция крыла».
-- **Слоистый композит** (`src/core/laminate.ts`, `structure.layup`: доли слоёв 0°, ±45°, 90°).
-  - Жёсткость — по классической теории слоистых пластин.
-  - Прочность — по наибольшей деформации в осях слоя, с выключением растрескавшихся слоёв: волокна рвутся — ламинат разрушен; трескается связующее — слой теряет поперечную жёсткость, нагрузка перераспределяется.
-  - Без укладки композит, как и раньше, однонаправленный вдоль размаха.
-  - У материала появились `Yt` и `Yc` — прочность слоя поперёк волокон.
+  Without a torsion box the torsional stiffness is unknown, and flutter is not checked.
+- **Cessna 172S: torsion box and strut are estimates** (assumptions "Wing torsion box skin" and "Strut attachment"). There is no data: the Cessna structural repair manual (SESR04) gives only materials; there are no wing stiffnesses or frequency measurements. Spars at 20 and 65 % chord, skin 0.020 in, strut to the front spar at 2.6 m from the centerline, root hinged. Result: no wing flutter up to 270 m/s, divergence from 690 m/s for any combination of estimates (skin 0.016–0.025 in, spars ±5 % chord, strut ±0.3 m). This is a plausibility check: the aircraft is certified, and the regulations require freedom from flutter up to 1.2·V_D ≈ 112 m/s. Without the strut the same cantilever diverges at 192 m/s, and the first frequency drops from 12.8 to 6.5 Hz. Aileron flutter (on the real aircraft they are mass-balanced) is not computed.
+- **Flutter in the verdict.** If the test speed reached the flutter or divergence speed — "Breaks up". If the margin is below 20 %, a warning (CS-23.629 requires 1.2 times the design dive speed). The report has a line "Wing flutter and divergence".
+- **Laminated composite** (`src/core/laminate.ts`, `structure.layup`: fractions of 0°, ±45°, 90° plies).
+  - Stiffness — by classical laminate theory.
+  - Strength — by maximum strain in ply axes, with cracked plies switched off: fibers break — the laminate has failed; the matrix cracks — the ply loses transverse stiffness and the load is redistributed.
+  - Without a layup, the composite is unidirectional along the span, as before.
+  - Materials now have `Yt` and `Yc` — ply strength transverse to the fibers.
 
-### Что показали сверки
+### What the checks showed
 
-| Сверка | Модель | Измерено | Итог |
+| Check | Model | Measured | Result |
 | --- | --- | --- | --- |
-| Крыло Голанда (расчётный эталон) | 137,0 м/с, 68 рад/с | 137 м/с, ≈70 рад/с | пройдено |
-| NACA TN 1594, прогон 96 (воздух) | 104,3 м/с | 101,7 м/с | пройдено, +2,6 % |
-| прогон 60 (воздух) | 100,0 м/с | 103,0 м/с | пройдено, −2,9 % |
-| прогон 5 (фреон-12, ρ вчетверо больше) | 57,3 м/с | 55,4 м/с | пройдено, +3,4 % |
-| Частота флаттера | 24,6 / 24,8 / 27,2 Гц | 22,1 / 22,0 / 25,2 Гц | **расхождение** +8–13 % |
-| Частоты: изгиб, второй изгиб, кручение | 6,65 / 41,6 / 48,6 Гц | 6,25–6,45 / 35,8–39,2 / 44,6–47,6 Гц | **расхождение** +5–10 % |
-| Cessna 172S, кессон и подкос — оценки | флаттера нет до 270 м/с, дивергенция ≥ 690 м/с | нормы: нет до 1,2·V_D ≈ 112 м/с | пройдено (правдоподобие) |
-| Ламинаты NCAMP, модуль на сжатие (3 укладки) | | | пройдено, 0,1–0,8 % |
-| Ламинаты NCAMP, модуль на растяжение (4 укладки) | | | 1 пройдено, 3 **расхождения** +5–6 % |
-| Прочность на растяжение: 10/80/10 / 25/50/25 / 50/40/10 / [0/90] | 463 / 879 / 1410 / 1287 МПа | 462,5 / 717 / 1215 / 1166 МПа | 1 пройдено, 3 **расхождения** +10…+23 % |
-| Прочность на сжатие: 10/80/10 / 25/50/25 / 50/40/10 | 422 / 661 / 1016 МПа | 465 / 600 / 835 МПа | 1 пройдено, 2 **расхождения** +10 и +22 % |
+| Goland wing (computational benchmark) | 137.0 m/s, 68 rad/s | 137 m/s, ≈70 rad/s | pass |
+| NACA TN 1594, run 96 (air) | 104.3 m/s | 101.7 m/s | pass, +2.6 % |
+| run 60 (air) | 100.0 m/s | 103.0 m/s | pass, −2.9 % |
+| run 5 (Freon-12, ρ four times higher) | 57.3 m/s | 55.4 m/s | pass, +3.4 % |
+| Flutter frequency | 24.6 / 24.8 / 27.2 Hz | 22.1 / 22.0 / 25.2 Hz | **divergence** +8–13 % |
+| Frequencies: bending, second bending, torsion | 6.65 / 41.6 / 48.6 Hz | 6.25–6.45 / 35.8–39.2 / 44.6–47.6 Hz | **divergence** +5–10 % |
+| Cessna 172S, torsion box and strut are estimates | no flutter up to 270 m/s, divergence ≥ 690 m/s | regulations: none up to 1.2·V_D ≈ 112 m/s | pass (plausibility) |
+| NCAMP laminates, compressive modulus (3 layups) | | | pass, 0.1–0.8 % |
+| NCAMP laminates, tensile modulus (4 layups) | | | 1 pass, 3 **divergences** +5–6 % |
+| Tensile strength: 10/80/10 / 25/50/25 / 50/40/10 / [0/90] | 463 / 879 / 1410 / 1287 MPa | 462.5 / 717 / 1215 / 1166 MPa | 1 pass, 3 **divergences** +10…+23 % |
+| Compressive strength: 10/80/10 / 25/50/25 / 50/40/10 | 422 / 661 / 1016 MPa | 465 / 600 / 835 MPa | 1 pass, 2 **divergences** +10 and +22 % |
 
-### Почему расходится
+### Why it diverges
 
-- **Частота флаттера.** Выше настоящей на 8–13 % и с четырьмя формами: дело в теории по полосам (нет концевых потерь), а не в числе форм. Расчёт NACA 1949 года по той же теории дал ту же ошибку: 25,27 Гц против 22,1. Скорость флаттера при этом сходится.
-- **Собственные частоты.** Заделка в модели абсолютно жёсткая, настоящая в трубе податливее.
-- **Прочность ламинатов завышена.** Расчёт по деформации разрушения однонаправленного слоя (1,58 %) не знает, что в ламинате волокна рвутся раньше: у квазиизотропного разрушение при 1,25 %. Это известный эффект: концентрация у кромок образца, растрескивание соседних слоёв, межслойные напряжения у свободных кромок. Значит, детали с укладкой модель считает прочнее настоящих — до 20 %. Подбирать коэффициент не стали.
-- **Сжатие слоя.** Прочность слоя на сжатие NCAMP пересчитала по этой же теории из перекрёстного образца, поэтому сжатие — не вполне независимая сверка.
+- **Flutter frequency.** 8–13 % higher than the real one, even with four modes: the cause is strip theory (no tip losses), not the number of modes. NACA's 1949 calculation with the same theory gave the same error: 25.27 Hz vs. 22.1. The flutter speed still agrees.
+- **Natural frequencies.** The clamp in the model is perfectly rigid; the real one in the tunnel is more compliant.
+- **Laminate strength is overestimated.** A calculation based on the failure strain of a unidirectional ply (1.58 %) does not know that fibers in a laminate break earlier: a quasi-isotropic one fails at 1.25 %. This is a known effect: stress concentration at specimen edges, cracking of neighboring plies, interlaminar stresses at free edges. So the model rates parts with a layup as stronger than real ones — by up to 20 %. No correction factor was fitted.
+- **Ply compression.** NCAMP back-calculated the ply compressive strength from a cross-ply specimen using this same theory, so compression is not a fully independent check.
 
-### Ограничения
+### Limitations
 
-- Теория по полосам: нет концевых потерь, нет сжимаемости. Выше M ≈ 0,5 скорость флаттера завышена.
-- Подкос учтён только во флаттере: прочность лонжерона по-прежнему считается как у эквивалентной консоли.
-- Флаттер лопастей винтов и машущих крыльев не считается: там другая природа колебаний.
-- Грузы на крыле (баки, двигатели) в флаттер не входят.
-- Нелинейный флаттер больших прогибов (как у крыла Pazy) — вне модели.
+- Strip theory: no tip losses, no compressibility. Above M ≈ 0.5 the flutter speed is overestimated.
+- The strut is accounted for only in flutter: spar strength is still computed as for an equivalent cantilever.
+- Flutter of propeller blades and flapping wings is not computed: the oscillations there are of a different nature.
+- Wing-mounted masses (tanks, engines) are not included in flutter.
+- Nonlinear large-deflection flutter (as on the Pazy wing) is outside the model.
 
-## R22 в полёте вперёд и на авторотации: машущие лопасти, циклический шаг, обгонная муфта (2026-11-23)
+## R22 in forward flight and autorotation: flapping blades, cyclic pitch, freewheel clutch (2026-11-23)
 
 ```bash
-VALIDATE_ONLY=heli npm run physics -- --validate   # сверки этого раздела (около 4 мин)
-npm run check   # всё вместе: 440 проверок — 347 проходят, 93 «РАСХОЖДЕНИЕ», провалов нет
+VALIDATE_ONLY=heli npm run physics -- --validate   # checks for this section (about 4 min)
+npm run check   # everything together: 440 checks — 347 pass, 93 "DIVERGENCE", no failures
 ```
 
-Последний полный прогон дал один провал: не хватало переводов двух новых подписей органов управления. Их добавили
-после запуска, проверка переводов отдельно проходит.
+The last full run had one failure: translations of two new control labels were missing. They were added
+after the run; the translation check passes separately.
 
-### Что добавлено в ядро
+### What was added to the core
 
-- **Лопасти на шарнирах взмаха** (`flapping` у винта). Так устроена втулка R22 по POH: качающаяся, с шарнирами конусности.
-  - Взмах каждой лопасти — своё уравнение: Iβ·β̈ = M_возд + M_тяж − Iβ·Ω²·(β₀ + β). Центробежная сила возвращает лопасть с частотой ровно 1 раз за оборот.
-  - Лопасть в Rapier остаётся жёстким телом. Взмах наложен на положение и скорость сечений в аэродинамике и нагрузках, а момент вокруг шарнира с тела снят — на втулку он не передаётся.
-  - Конусность устанавливается сама: на висении 1,8° (прежняя оценка постоянной конусности — 2°).
-  - В нагрузках лопасти учтено её ускорение при взмахе (угловое, центростремительное, кориолисово).
-- **Циклический шаг** (`cyclic`): угол лопасти += cos·cos ψ + sin·sin ψ по азимуту. Ось винта для потока — нормаль к плоскости концов лопастей.
-- **Обгонная муфта** (`freewheel`): мотор отключается, обороты задают поток и инерция винта. Хвостовой винт крутится от несущего и тормозит его своей профильной мощностью.
-  - Мотор шарнира в Rapier не выключается: при нулевых коэффициентах шарнир становится жёстким. Поэтому шарнир вала пересоздаётся без мотора.
-- **Мощность несущего винта считается со знаком.** Кориолисовы силы качают вал два раза за оборот, в среднем это ноль. Если брать только положительную часть, мощность завышается вчетверо. Тяга хвостового винта — по моменту, сглаженному за 0,5 с.
-- **Полёт вперёд в «трубе»** (`src/cli/rotorflight.ts`): корпус свободен по вертикали, поток спереди. Автопилот:
-  - общий шаг держит вертикальную скорость, а на авторотации — обороты;
-  - продольный циклический шаг уравновешивает сопротивление;
-  - поперечный — тягу хвостового винта.
+- **Blades on flapping hinges** (`flapping` on the rotor). This is how the R22 hub is built per the POH: teetering, with coning hinges.
+  - Each blade's flapping has its own equation: Iβ·β̈ = M_aero + M_grav − Iβ·Ω²·(β₀ + β). Centrifugal force restores the blade at exactly once per revolution.
+  - The blade stays a rigid body in Rapier. Flapping is superimposed on the position and velocity of the sections in the aerodynamics and loads, and the moment about the hinge is removed from the body — it is not transmitted to the hub.
+  - Coning settles by itself: 1.8° in hover (the previous constant-coning estimate was 2°).
+  - Blade loads include the blade's acceleration due to flapping (angular, centripetal, Coriolis).
+- **Cyclic pitch** (`cyclic`): blade angle += cos·cos ψ + sin·sin ψ by azimuth. The rotor axis for the flow is the normal to the tip-path plane.
+- **Freewheel clutch** (`freewheel`): the engine disengages; rpm is set by the flow and the rotor inertia. The tail rotor is driven by the main rotor and brakes it with its profile power.
+  - The joint motor in Rapier cannot be switched off: with zero coefficients the joint becomes rigid. So the shaft joint is recreated without a motor.
+- **Main rotor power is computed with sign.** Coriolis forces rock the shaft twice per revolution, averaging zero. Taking only the positive part overestimates power fourfold. Tail rotor thrust is based on torque smoothed over 0.5 s.
+- **Forward flight in a "tunnel"** (`src/cli/rotorflight.ts`): the fuselage is free vertically, with flow from the front. Autopilot:
+  - collective holds vertical speed, and in autorotation — rpm;
+  - longitudinal cyclic balances drag;
+  - lateral cyclic balances tail rotor thrust.
 
-### Что показали сверки
+### What the checks showed
 
-| Сверка | Модель | Эталон | Итог |
+| Check | Model | Reference | Result |
 | --- | --- | --- | --- |
-| 90 kt горизонтально | 96,6 л. с. | 90 HP (Robinson, AAIB 11/98) | пройдено, +7 % |
-| 60 kt, набор 1000 ft/min | 108 л. с. | 103 HP | пройдено, +5 % |
-| Авторотация 60 и 70 KIAS, 100 % | 1317 и 1498 ft/min | «обычно меньше 1500» (POH, SN-38) | пройдено |
-| Авторотация 75 KIAS, 90 % | 1460 ft/min, качество 5,2:1 | около 1900 ft/min (качество 4:1, POH) | **расхождение** −23 % |
-| Наименьшая вертикальная скорость при 90 % | на 45 kt, кривая пологая: 1069–1101 ft/min на 40–53 kt | 53 kt (Flight Training Guide) | пройдено (45–60 kt) |
-| Висение R22 (прежние сверки) | 71,1 кВт, как было | | без изменений |
+| 90 kt level | 96.6 hp | 90 HP (Robinson, AAIB 11/98) | pass, +7 % |
+| 60 kt, climb 1000 ft/min | 108 hp | 103 HP | pass, +5 % |
+| Autorotation 60 and 70 KIAS, 100 % | 1317 and 1498 ft/min | "usually less than 1500" (POH, SN-38) | pass |
+| Autorotation 75 KIAS, 90 % | 1460 ft/min, glide ratio 5.2:1 | about 1900 ft/min (glide ratio 4:1, POH) | **divergence** −23 % |
+| Minimum rate of descent at 90 % | at 45 kt, the curve is flat: 1069–1101 ft/min at 40–53 kt | 53 kt (Flight Training Guide) | pass (45–60 kt) |
+| R22 hover (earlier checks) | 71.1 kW, as before | | unchanged |
 
-Справочно:
-- Взмах лопасти на 90 kt — ±5°, хвостовой винт забирает 6 л. с.
-- Энергия вращения винта на 104 % — 298 HP·s, запас до 80 % — 122 HP·s. Robinson называет 100 HP·s, но что именно — вся энергия или запас — из текста не ясно.
+Info:
+- Blade flapping at 90 kt is ±5°, the tail rotor takes 6 hp.
+- Rotor rotational energy at 104 % is 298 HP·s, the margin down to 80 % is 122 HP·s. Robinson quotes 100 HP·s, but whether that is the total energy or the margin is unclear from the text.
 
-### Почему расходится и чего нет
+### Why it diverges and what is missing
 
-- **Авторотация на 75 kt медленнее настоящей.** На этой скорости около половины потерь — сопротивление фюзеляжа (0,59 м², оценка). Фюзеляж в «трубе» не наклоняется, а у настоящего на авторотации нос поднят.
-- **Прочность лопасти в полёте вперёд — справочно, разрушение выключено.** Запас у корня падает до 0,8 на 90 kt. Причины:
-  - лонжерон — эквивалентная коробка 40 % хорды, в плоскости вращения он слабее настоящей лопасти;
-  - подвеска втулки ниже шарнира, которая у R22 гасит кориолисовы силы, не опубликована, и в модели её нет.
+- **Autorotation at 75 kt descends slower than the real one.** At this speed about half the losses are fuselage drag (0.59 m², an estimate). The fuselage in the "tunnel" does not pitch, while the real one is nose-up in autorotation.
+- **Blade strength in forward flight is info only; failure is disabled.** The margin at the root drops to 0.8 at 90 kt. Reasons:
+  - the spar is an equivalent box of 40 % chord; in the plane of rotation it is weaker than the real blade;
+  - the hub suspension below the hinge, which on the R22 absorbs Coriolis forces, is not published and is not in the model.
 
-  Измерений нагрузок лопасти нет, поэтому подбирать нечего.
-- Нет балансировки фюзеляжа по тангажу и крену, нет свободного полёта вертолёта во всех степенях: в уравнение взмаха не входят угловые скорости корпуса.
-- Поток через диск — по кольцам. Перекоса потока вдоль диска в полёте вперёд нет: поперечный взмах от него не воспроизводится.
-- Программы полёта вперёд для вертолёта на странице пока нет — только сверки.
+  There are no blade load measurements, so there is nothing to fit.
+- There is no fuselage trim in pitch and roll, and no free flight of the helicopter in all degrees of freedom: fuselage angular rates do not enter the flapping equation.
+- Inflow through the disk is computed by annuli. There is no inflow skew across the disk in forward flight: the lateral flapping it causes is not reproduced.
+- There is no forward-flight program for the helicopter on the page yet — only the checks.
 
-## Cessna 172S во всех шести степенях свободы: устойчивость из геометрии (2026-11-23)
+## Cessna 172S in all six degrees of freedom: stability from geometry (2026-11-23)
 
 ```bash
-VALIDATE_ONLY=sixdof npm run physics -- --validate   # сверки этого раздела (около 5 мин)
-npm run check   # всё вместе: 432 проверки — 340 проходят, 92 «РАСХОЖДЕНИЕ», провалов нет; 88 строк справочно
+VALIDATE_ONLY=sixdof npm run physics -- --validate   # checks for this section (about 5 min)
+npm run check   # everything together: 432 checks — 340 pass, 92 "DIVERGENCE", no failures; 88 info lines
 ```
 
-Числа общего прогона собраны из полного прогона (420 проверок) и перепрогона исправленных после него разделов.
+The overall run figures are assembled from the full run (420 checks) and a rerun of the sections fixed after it.
 
-Самолёт больше не летает «в плоскости» с подобранной массой фюзеляжа. Он собран по своим данным:
-- геометрия — сертификат типа EASA и Jane's: крыло с изломом на 2,10 м, рули с их площадями и ходами;
-- 17 масс — по перечню оборудования и примеру взвешивания POH: 2550 lb на 42,6 in, как в POH;
-- после отрыва он свободен по всем шести степеням.
+The aircraft no longer flies "in a plane" with a fitted fuselage mass. It is built from its own data:
+- geometry — EASA type certificate and Jane's: a wing with a planform break at 2.10 m, control surfaces with their areas and deflections;
+- 17 masses — from the POH equipment list and weighing example: 2550 lb at 42.6 in, as in the POH;
+- after liftoff it is free in all six degrees.
 
-Устойчивость нигде не задаётся числом — она получается из геометрии. Источники — в `data/research.md`, часть 8.
+Stability is never set as a number — it emerges from the geometry. Sources are in `data/research.md`, part 8.
 
-### Что добавлено в ядро
+### What was added to the core
 
-| Что | Как |
+| What | How |
 | --- | --- |
-| Рули на участке размаха | `control.from/to` — элерон только на своих 2,10–5,41 м; `degNeg` — дифференциальные элероны (вверх 20°, вниз 15°). Эффективность закрылка — теория тонкого профиля τ = 1 − (θf − sin θf)/π |
-| Хорда по размаху | `planform` — крыло не трапеция (прямоугольник до излома, трапеция за ним) |
-| Скос потока за крылом | каждая консоль — подковообразный вихрь (Прандтль, свёрнутый концевой вихрь на π/4 размаха), Γ — из подъёмной силы консоли; на оперение приходит циркуляция, которая была у крыла (путь по потоку)/V назад — отсюда демпфирование C_mα̇; у земли — зеркальный вихрь |
-| Обтекание фюзеляжа поперечным потоком | в сечении тела — двумерный диполь: δ = (R²/r²)(c − 2(c·r̂)r̂). Даёт скос у корня крыла, поперечную устойчивость высокоплана при скольжении и боковой скос у киля |
-| Момент Мунка | тело под углом к потоку разворачивается поперёк: M = ρV(k₁ − k₂)·v_x·(x̂ × v), k₁, k₂ — Лэмб |
-| Реактивный момент мотора | `spin` у винта: корпус получает −Q вдоль оси (Lycoming кренит влево) |
-| Полёт в 6 степенях | у аппарата с элеронами после отрыва корпус свободен; боковой автопилот держит курс креном, крен — элеронами, скольжение — рулём направления. Углы крена, курса, скольжения — в выборке |
+| Control surfaces on a span segment | `control.from/to` — the aileron only on its own 2.10–5.41 m; `degNeg` — differential ailerons (up 20°, down 15°). Flap effectiveness — thin airfoil theory τ = 1 − (θf − sin θf)/π |
+| Chord along span | `planform` — the wing is not a trapezoid (rectangle up to the break, trapezoid beyond it) |
+| Downwash behind the wing | each wing half is a horseshoe vortex (Prandtl, rolled-up tip vortex at π/4 of the span), Γ from the half-wing lift; the tail sees the circulation the wing had (streamwise distance)/V ago — hence the C_mα̇ damping; near the ground — an image vortex |
+| Crossflow around the fuselage | in the body cross-section — a 2D doublet: δ = (R²/r²)(c − 2(c·r̂)r̂). Gives upwash at the wing root, high-wing lateral stability in sideslip, and sidewash at the fin |
+| Munk moment | a body at an angle to the flow turns broadside: M = ρV(k₁ − k₂)·v_x·(x̂ × v), k₁, k₂ — Lamb |
+| Engine torque reaction | `spin` on the propeller: the fuselage receives −Q along the axis (the Lycoming rolls it left) |
+| 6-DOF flight | for an aircraft with ailerons the fuselage is free after liftoff; the lateral autopilot holds heading with bank, bank with ailerons, sideslip with the rudder. Bank, heading and sideslip angles are in the output |
 
-### Что показали сверки
+### What the checks showed
 
-| Сверка | Модель | Эталон | Итог |
+| Check | Model | Reference | Result |
 | --- | --- | --- | --- |
-| Коэффициенты Лэмба k₁, k₂ (4 эллипсоида) | до 0,9 % | таблица Лэмба | пройдено |
-| Скос у стабилизатора dε/dα | 0,326 | 0,342 (DATCOM, обобщение продувок) | пройдено, −5 % |
-| Снижение 1000 ft/min на газе балансировки 110 KIAS | 136 KIAS | 135 KIAS (лётное испытание AAIB) | пройдено |
-| Устойчивость по скорости: в снижении руль «от себя» | −5,3° против −4,2° | давление 2 кгс от себя | пройдено |
-| Затухание фугоиды ζ | 0,11 | 0,14 по рис. 5 AAIB | пройдено |
-| Период фугоиды | 31,6 с | 35–40 с | **расхождение** −16 % |
-| Обороты на 110 KIAS / в снижении | 2580 / 2869 | 2500 / 2650 | **расхождение** +3 / +8 %: винт «лёгкий» (геометрия лопасти не опубликована) |
-| Правая педаль: крен вправо, нос вниз, скорость растёт | да | да (AAIB) | пройдено |
-| Время до крена 30° при руле 3° | 23 с | «спираль за 10–15 с» | **расхождение** |
-| Крейсерская таблица POH, 7 строк | мощность −6,6 % в среднем | | было −9,6 %; 4 строки перешли в «пройдено» |
-| Скороподъёмность у земли / на 8000 ft | +15 / +16 % | POH | было +18 / +17 % |
-| Сваливание 53 KCAS, наибольшая скорость | 0,4 % / в допуске | POH | как было |
+| Lamb coefficients k₁, k₂ (4 ellipsoids) | up to 0.9 % | Lamb's table | pass |
+| Downwash at the stabilizer dε/dα | 0.326 | 0.342 (DATCOM, generalization of wind tunnel tests) | pass, −5 % |
+| Descent at 1000 ft/min at trim power for 110 KIAS | 136 KIAS | 135 KIAS (AAIB flight test) | pass |
+| Speed stability: in descent the elevator goes "nose down" | −5.3° vs. −4.2° | 2 kgf push | pass |
+| Phugoid damping ζ | 0.11 | 0.14 from AAIB fig. 5 | pass |
+| Phugoid period | 31.6 s | 35–40 s | **divergence** −16 % |
+| RPM at 110 KIAS / in descent | 2580 / 2869 | 2500 / 2650 | **divergence** +3 / +8 %: the propeller is "light" (blade geometry not published) |
+| Right pedal: roll right, nose down, speed increases | yes | yes (AAIB) | pass |
+| Time to 30° bank with 3° rudder | 23 s | "spiral in 10–15 s" | **divergence** |
+| POH cruise table, 7 rows | power −6.6 % on average | | was −9.6 %; 4 rows moved to "pass" |
+| Rate of climb at sea level / at 8000 ft | +15 / +16 % | POH | was +18 / +17 % |
+| Stall 53 KCAS, maximum speed | 0.4 % / within tolerance | POH | as before |
 
-Скос потока и киль добавили сопротивление на балансировку — и крейсер с набором подошли к POH сами, без подбора.
+Downwash and the fin added trim drag — and cruise and climb moved toward the POH on their own, without fitting.
 
-**Справочно (эталоны — расчёты, не измерения).** Производные устойчивости модели, в скобках — Cessna 182 по NASA CR-1975 и JSBSim c172p:
-- C_Lα 5,10 (4,61);
-- C_Yβ −0,43 (−0,31; −0,39);
-- C_lβ −0,065 (−0,089; −0,092);
-- C_nβ 0,117 (0,065; 0,059).
+**Info (references are calculations, not measurements).** Model stability derivatives; in parentheses — Cessna 182 from NASA CR-1975 and JSBSim c172p:
+- C_Lα 5.10 (4.61);
+- C_Yβ −0.43 (−0.31; −0.39);
+- C_lβ −0.065 (−0.089; −0.092);
+- C_nβ 0.117 (0.065; 0.059).
 
-Моменты инерции модели — 1792 / 2185 / 3448 кг·м². Измерений для C172 нет. Три расчётных источника расходятся между собой вдвое, и модель лежит между ними.
+Model moments of inertia are 1792 / 2185 / 3448 kg·m². There are no measurements for the C172. Three computed sources differ from each other by a factor of two, and the model lies between them.
 
-### Почему расходится
+### Why it diverges
 
-- **Период фугоиды.** В испытании ручку отпустили, и руль высоты свободен: он «плавает», и запас устойчивости меньше, чем с закреплённым рулём. При меньшем запасе фугоида длиннее. Кроме того, не учтена обдувка оперения струёй винта.
-- **Спираль.** Поперечная устойчивость модели (C_lβ) в 1,4 раза меньше расчётной, поэтому крен от скольжения нарастает медленнее. Сколько градусов руля дают 2 см педали — оценка (≈ 3°): при 4° модель доходит до крена 30° за 17 с. У настоящего самолёта элероны тоже свободны.
-- **Путевая устойчивость C_nβ.** Она больше расчётов NASA и JSBSim. Но киль площадью 1,73 м² (Jane's) с «удлинением стенки» и боковым скосом по раскладке DATCOM даёт 0,1–0,15. Нормальная сила винта при скольжении, которая снижает путевую устойчивость, в модели не считается.
+- **Phugoid period.** In the test the yoke was released and the elevator is free: it "floats", and the stability margin is smaller than with a fixed elevator. With a smaller margin the phugoid is longer. In addition, propeller slipstream over the tail is not accounted for.
+- **Spiral.** The model's lateral stability (C_lβ) is 1.4 times lower than computed, so bank from sideslip builds more slowly. How many degrees of rudder 2 cm of pedal gives is an estimate (≈ 3°): with 4° the model reaches 30° bank in 17 s. On the real aircraft the ailerons are free as well.
+- **Directional stability C_nβ.** It is higher than the NASA and JSBSim calculations. But a fin of 1.73 m² (Jane's) with "end-plate aspect ratio" and sidewash per the DATCOM breakdown gives 0.1–0.15. The propeller normal force in sideslip, which reduces directional stability, is not computed in the model.
 
-### Ограничения
+### Limitations
 
-- Свободный (плавающий) руль: шарнирные моменты рулей не моделируются — руль закреплён там, куда его поставили.
-- Струя винта не обдувает оперение и фюзеляж. Закрутка струи, косая обдувка винта и P-фактор не учтены.
-- При больших отклонениях рули линейны: срыв с отклонённой части не учтён.
-- След за крылом прямой, по потоку: его не опускает скос и он не сворачивается постепенно.
-- Разбег идёт в плоскости: колёса на полосе не рулятся.
+- Free (floating) control surface: control surface hinge moments are not modeled — a surface stays where it was set.
+- The propeller slipstream does not blow over the tail and fuselage. Slipstream swirl, oblique inflow to the propeller and P-factor are not accounted for.
+- At large deflections control surfaces are linear: separation from the deflected part is not accounted for.
+- The wake behind the wing is straight, streamwise: downwash does not deflect it and it does not roll up gradually.
+- The takeoff roll is in a plane: the wheels are not steered on the runway.
 
-## «Аппараты под физику»: влияние земли, поток по кольцам винта, поляры по продувкам (2026-11-22)
+## "Aircraft built for the physics": ground effect, per-annulus rotor inflow, polars from wind-tunnel tests (2026-11-22)
 
 ```bash
-VALIDATE_ONLY=ground,download,rotors,r22 npm run physics -- --validate   # сверки этого раздела
-npm run check   # всё вместе: 406 проверок — 314 проходят, 92 «РАСХОЖДЕНИЕ», провалов нет; 80 строк справочно (без сверки ISA ± 20)
+VALIDATE_ONLY=ground,download,rotors,r22 npm run physics -- --validate   # checks for this section
+npm run check   # everything together: 406 checks — 314 pass, 92 "DIVERGENCE", no failures; 80 INFO rows (excluding the ISA ± 20 check)
 ```
 
-Правило: не подбирать числа модели под ответ, а добавлять недостающую физику и задавать аппараты по их настоящим данным.
-Подгоночные величины, которые раньше закрывали пробелы, убраны. Поэтому расхождений с опытами стало больше (87 против 62):
-то, что раньше было спрятано в подобранном числе, теперь видно.
+Rule: do not tune the model's numbers to fit the answer; add the missing physics instead and define the aircraft by their real data.
+The fitted quantities that used to paper over the gaps have been removed. As a result there are more divergences from experiment (87 versus 62):
+what used to be hidden in a fitted number is now visible.
 
-### Что добавлено в ядро
+### What was added to the core
 
-| Что | Было | Стало | Сверка с измерениями |
+| What | Before | Now | Check against measurements |
 | --- | --- | --- | --- |
-| Винт у земли | не было | зеркальное отображение Чизмена — Беннета с поправкой на скорость полёта (`rotorGroundFactor`, `aero.ts`) | лётные точки Зброжека — 0,5–2 %; лётные кривые R&M 3021 — 0,1–4,3 %; стенд TN 835 при z/R ≥ 1,5 — 2 %, при z/R 0,5–1 модель даёт выгоду меньше опыта на 5–9 % |
-| Крыло у земли | не было | теория Визельсбергера (`wingGroundFactor`) | продувки TN D-926, h/b 0,05–0,5: 2–8 % |
-| Поток через несущий винт | один на весь диск × κ = 1,15 (эмпирический множитель), обрезка подъёмной силы у конца | свой на каждом кольце диска (теория элемента лопасти с импульсом, BEMT) с концевыми потерями Прандтля; κ нет | две независимые реализации BEMT совпадают: тяга 0,17 %, мощность 0,07 %; без сопротивления профиля κ получается 1,11–1,17 — как в опытах |
-| Поляры профилей | 4–5 чисел (c_l0, наклон, c_l,max, c_d0, k) | табличные по числу Рейнольдса сечения из продувок: NACA 0012 (Ladson, измерения, и Сандия), 0015 (Сандия), 63₂-015 (Report 824); вязкость воздуха — по Сазерленду | см. ниже |
-| Поверхность лопасти | не было | гладкая (как в трубе) или со стандартной шероховатостью — измерено отдельно; свойство аппарата, ползунок | см. ниже |
-| Сопротивление корпуса | одно C_D·S во все стороны | продольное — C_D·S; поперёк — C_D поперечного обтекания × площадь проекции формы (Аллен — Перкинс) | падение тела с сопротивлением — по формуле |
-| Струя несущего винта на корпусе (download) | не было | в каждой точке плана корпуса — скорость струи с того кольца диска, откуда пришёл поток, со сжатием струи | панели под винтом TN 3900: у диска модель занижает нагрузку на 40–65 %, на 0,64 R — на 20 %; малая панель на 0,64 R — 4 % |
-| Хвостовой винт | доля потерь 15 % (оценка) | свой BEMT по размерам из POH; тяга — по моменту несущего винта (`tailrotor.ts`) | — |
+| Rotor near the ground | none | Cheeseman–Bennett mirror image with a forward-speed correction (`rotorGroundFactor`, `aero.ts`) | Zbrożek flight points — 0.5–2 %; R&M 3021 flight curves — 0.1–4.3 %; TN 835 test stand at z/R ≥ 1.5 — 2 %, at z/R 0.5–1 the model gives 5–9 % less benefit than experiment |
+| Wing near the ground | none | Wieselsberger theory (`wingGroundFactor`) | TN D-926 wind-tunnel tests, h/b 0.05–0.5: 2–8 % |
+| Inflow through the main rotor | one value for the whole disk × κ = 1.15 (empirical factor), lift cutoff at the tip | its own value on each annulus of the disk (blade element momentum theory, BEMT) with Prandtl tip losses; no κ | two independent BEMT implementations agree: thrust 0.17 %, power 0.07 %; without profile drag κ comes out at 1.11–1.17 — as in experiments |
+| Airfoil polars | 4–5 numbers (c_l0, slope, c_l,max, c_d0, k) | tabulated by section Reynolds number from wind-tunnel tests: NACA 0012 (Ladson, measurements, and Sandia), 0015 (Sandia), 63₂-015 (Report 824); air viscosity from Sutherland | see below |
+| Blade surface | none | smooth (as in the tunnel) or with standard roughness — measured separately; an aircraft property, a slider | see below |
+| Body drag | a single C_D·S in all directions | longitudinal — C_D·S; lateral — crossflow C_D × planform projected area (Allen–Perkins) | falling body with drag — matches the formula |
+| Main rotor wake on the body (download) | none | at each point of the body planform — the wake velocity from the disk annulus the flow came from, with wake contraction | panels under the rotor, TN 3900: near the disk the model underestimates the load by 40–65 %, at 0.64 R — by 20 %; small panel at 0.64 R — 4 % |
+| Tail rotor | 15 % loss share (estimate) | its own BEMT with dimensions from the POH; thrust from the main rotor torque (`tailrotor.ts`) | — |
 
-### Поверхность лопасти: что показали опыты
+### Blade surface: what the experiments showed
 
-У одного и того же NACA 0012 при Re 2·10⁶ сопротивление гладкого профиля 0,0062, а с шероховатой полосой у кромки — 0,011
-(Ladson, оба значения — измерения). Мощность винта от этого меняется на 10–15 %. Какая поверхность была у лопастей в опыте,
-не известно, поэтому сверка такая: опыт должен лежать между гладкой и шероховатой лопастью.
+For the same NACA 0012 at Re 2·10⁶, the drag of the smooth airfoil is 0.0062, and with a roughness strip at the leading edge it is 0.011
+(Ladson, both values measured). This changes rotor power by 10–15 %. What surface the blades had in the experiment
+is unknown, so the check is: the experiment must lie between the smooth and the rough blade.
 
-| Опыт | Модель гладкая / шероховатая (к опыту) | Итог |
+| Experiment | Model smooth / rough (relative to experiment) | Result |
 | --- | --- | --- |
-| Carpenter, TN 4357, θ 4° / 7° / 10° | 0,83–1,10 / 0,90–1,06 / 0,92–1,01 | опыт внутри полосы (на 63–89 % пути к шероховатой) |
-| Винт 63₂-015, TN 3850, C_T 0,0037 | 2,05 / 2,25 ·10⁻⁴ при опыте 2,25·10⁻⁴ | внутри (у шероховатого края) |
-| R22, POH, 6 точек потолка OGE | −28 % / −20 % | **расхождение**: даже с шероховатыми лопастями модель на 20 % ниже |
+| Carpenter, TN 4357, θ 4° / 7° / 10° | 0.83–1.10 / 0.90–1.06 / 0.92–1.01 | experiment inside the band (63–89 % of the way toward rough) |
+| 63₂-015 rotor, TN 3850, C_T 0.0037 | 2.05 / 2.25 ·10⁻⁴ vs. experiment 2.25·10⁻⁴ | inside (at the rough edge) |
+| R22, POH, 6 OGE ceiling points | −28 % / −20 % | **divergence**: even with rough blades the model is 20 % low |
 
 ### R22
 
-Аппарат приведён к его настоящим данным:
-- втулка над землёй 107 in (было 2,34 м, стало 2,72 м);
-- хвостовая балка как отдельная деталь;
-- хвостовой винт по POH: 2 лопасти, 42 in, хорда 4 in, 622 ft/s;
-- потери трансмиссии 5 % (оценка, КПД 0,95) вместо 15 %, в которые раньше был спрятан хвостовой винт;
-- поляра лопасти по продувкам;
-- поверхность лопастей — ползунок, по умолчанию 0,5.
+The aircraft has been brought in line with its real data:
+- hub height above ground 107 in (was 2.34 m, now 2.72 m);
+- tail boom as a separate part;
+- tail rotor per the POH: 2 blades, 42 in, 4 in chord, 622 ft/s;
+- transmission losses 5 % (estimate, efficiency 0.95) instead of 15 %, in which the tail rotor used to be hidden;
+- blade polar from wind-tunnel tests;
+- blade surface — a slider, 0.5 by default.
 
-Хвостовой винт берёт около 6,5 % мощности несущего, струя на корпус и балку — 1,4–3 % тяги.
+The tail rotor takes about 6.5 % of main rotor power; the wake on the body and boom — 1.4–3 % of thrust.
 
-Модель висит на 20–24 % меньшей мощности, чем следует из графика POH. Сама лопасть не виновата: винт того же профиля
-(TN 3850) модель считает в полосе опыта. Остаются три кандидата, все вне аэродинамики лопасти:
-- толкование крутого участка графика POH как взлётных 131 BHP — оценка: если двигатель там уже не даёт взлётной мощности,
-  расхождение меньше;
-- вентилятор охлаждения мотора, генератор;
-- втулка и комли лопастей.
+The model hovers on 20–24 % less power than the POH chart implies. The blade itself is not to blame: a rotor with the same airfoil
+(TN 3850) the model computes within the experimental band. Three candidates remain, all outside blade aerodynamics:
+- reading the steep part of the POH chart as takeoff 131 BHP — an estimate: if the engine no longer delivers takeoff power there,
+  the divergence is smaller;
+- the engine cooling fan, the alternator;
+- the hub and blade roots.
 
-Нужны данные о мощности R22 на висении из лётных испытаний.
+R22 hover power data from flight tests are needed.
 
-### Что стало хуже, чем было (и почему это честно)
+### What got worse than before (and why this is honest)
 
-- **Винты малых чисел Рейнольдса (TN 626, TN 835, Re 1–2·10⁵):** мощность модели на 12–17 % ниже опыта. Раньше их c_d0
-  снимали с этого же опыта (по моменту при нулевой тяге), это была подгонка. Теперь поляра — из таблиц Сандии, а там при таких
-  Re не измерение, а расчёт Эпплера. Измеренных таблиц NACA 0015 при Re 10⁵ найти не удалось.
-- **Соосный ротор Харрингтона 1:** −20…−26 % по мощности. Толщина профиля по радиусу у него от 30 % до 15 %, в модели —
-  табличная 0015 по всему радиусу (оценка).
+- **Low-Reynolds-number rotors (TN 626, TN 835, Re 1–2·10⁵):** model power is 12–17 % below experiment. Previously their c_d0
+  was taken from the same experiment (from torque at zero thrust), which was a fit. Now the polar comes from the Sandia tables, and at such
+  Re those are not measurements but Eppler calculations. Measured NACA 0015 tables at Re 10⁵ could not be found.
+- **Harrington coaxial rotor 1:** −20…−26 % in power. Its airfoil thickness varies along the radius from 30 % to 15 %; the model uses
+  tabulated 0015 over the whole radius (estimate).
 
-### Двигатели, топливо, батареи (`src/core/engine.ts`)
+### Engines, fuel, batteries (`src/core/engine.ts`)
 
-| Что | Было | Стало | Сверка |
+| What | Before | Now | Check |
 | --- | --- | --- | --- |
-| Поршневой мотор на высоте | Гэгг — Феррар: 1,132σ − 0,132 (общая формула) | график Lycoming: P/P₀ = 1 − k·(1 − δ/√θ), k = 1,04 (IO-360-L2A); дросселированный мотор R22 — 131 л. с., пока полный газ их даёт (O-360-J2A, k = 1,10 по рис. 3-41) | POH Cessna: 77 % на 8000 ft — 2 %, 72 % на 10 000 ft — 2,2 % |
-| Температура воздуха | только стандартная | ISA ± ΔT: плотность по уравнению состояния, мощность мотора по поправке Lycoming √(T_ст/T); на странице — поле «Температура воздуха» | POH Cessna, 8000 ft: ISA и ISA+20 — 2–2,4 %; ISA−20 — **расхождение** 5,4 %: по POH прибавка мощности на холоде вдвое больше поправки Lycoming (ближе к закону плотности) |
-| Расход топлива | не было | удельный расход по графику Lycoming (рис. 3-9) по доле мощности; смесь — от наивыгоднейшей до наибольшей мощности | POH Cessna, 16 строк: 12 — расход POH между двумя смесями; 4 строки при 77 % — **расхождение**: POH обедняет смесь там, где Lycoming разрешает только смесь наибольшей мощности (выше 75 %) |
-| Турбовальный двигатель | σ^0,7 | δ/√θ (приведённые параметры), не больше взлётной; удельный расход по режиму — кривая T700 (GE) | справочно: у ТВ3-117ВМ (МАИ) расход на малых режимах на 5–15 % выше — разные двигатели |
-| Батарея | не было | энергия до отсечки по измеренной кривой разряда HV-LiPo (SINTEF): отдаваемая ёмкость и средний вольтаж по току | Phantom 4: модель 32,9 мин против «около 28 мин» по паспорту — **расхождение** +17 %: мощность висения в модели занижена, электроника, подвес и камера не потребляют |
-| Время работы | не было | в отчёте: на сколько хватит топлива или батареи при мощности испытания | — |
+| Piston engine at altitude | Gagg–Ferrar: 1.132σ − 0.132 (general formula) | Lycoming chart: P/P₀ = 1 − k·(1 − δ/√θ), k = 1.04 (IO-360-L2A); the R22's derated engine — 131 hp as long as full throttle can deliver it (O-360-J2A, k = 1.10 per Fig. 3-41) | Cessna POH: 77 % at 8000 ft — 2 %, 72 % at 10,000 ft — 2.2 % |
+| Air temperature | standard only | ISA ± ΔT: density from the equation of state, engine power from the Lycoming correction √(T_std/T); on the page — an "Air temperature" field | Cessna POH, 8000 ft: ISA and ISA+20 — 2–2.4 %; ISA−20 — **divergence** 5.4 %: per the POH the power gain in the cold is twice the Lycoming correction (closer to the density law) |
+| Fuel flow | none | specific fuel consumption from the Lycoming chart (Fig. 3-9) by power fraction; mixture — from best economy to best power | Cessna POH, 16 rows: 12 — POH fuel flow between the two mixtures; 4 rows at 77 % — **divergence**: the POH leans the mixture where Lycoming allows only best-power mixture (above 75 %) |
+| Turboshaft engine | σ^0.7 | δ/√θ (corrected parameters), capped at takeoff power; specific fuel consumption by power setting — T700 (GE) curve | INFO: for the TV3-117VM (MAI) fuel consumption at low power settings is 5–15 % higher — different engines |
+| Battery | none | energy to cutoff from a measured HV-LiPo discharge curve (SINTEF): delivered capacity and average voltage vs. current | Phantom 4: model 32.9 min vs. "about 28 min" per the spec sheet — **divergence** +17 %: hover power in the model is underestimated; electronics, gimbal and camera draw no power |
+| Endurance | none | in the report: how long the fuel or battery will last at the test power | — |
 
-Не сделано: мускульная сила как источник с кривой «мощность — время» (данные собраны: NASA SP-3006, Pinot & Grappe,
-Daedalus), расход топлива во времени с уменьшением массы, остаток топлива как ограничение испытания.
+Not done: human muscle power as a source with a "power — time" curve (data collected: NASA SP-3006, Pinot & Grappe,
+Daedalus), fuel burn over time with decreasing mass, remaining fuel as a test limit.
 
-### Ограничения
+### Limitations
 
-- Влияние земли на струю (растекание у земли) в нагрузке на корпус не учтено. Опыт показывает, что у земли
-  download падает до нуля.
-- Струя сжимается медленнее, чем у настоящего винта (вихревой цилиндр за равномерно нагруженным диском), и у диска
-  нет пульсаций от пролетающих лопастей.
-- Табличные поляры пока только у R22 и у винтов в сверках. У Cessna, квадрокоптера, махолётов и проектов ИИ
-  поляры прежние, параметрические.
+- Ground effect on the wake (spreading near the ground) is not included in the body load. Experiment shows that near the ground
+  download drops to zero.
+- The wake contracts more slowly than for a real rotor (a vortex cylinder behind a uniformly loaded disk), and near the disk
+  there are no pulsations from passing blades.
+- Tabulated polars so far exist only for the R22 and the rotors in the checks. The Cessna, the quadcopter, the ornithopters and the AI projects
+  still use the old parametric polars.
 
-## Винт фиксированного шага Cessna 172S: равновесие оборотов мотора и винта (2026-11-12)
+## Cessna 172S fixed-pitch propeller: engine–propeller rpm equilibrium (2026-11-12)
 
 ```bash
-VALIDATE_ONLY=cessna npm run physics -- --validate   # только раздел Cessna, около 3 мин
-npm run check   # (на 2026-11-12) общий прогон после всех трёх доработок: 346 проверок — 284 проходят, 62 «РАСХОЖДЕНИЕ», провалов нет
+VALIDATE_ONLY=cessna npm run physics -- --validate   # Cessna section only, about 3 min
+npm run check   # (as of 2026-11-12) full run after all three improvements: 346 checks — 284 pass, 62 "DIVERGENCE", no failures
 ```
 
-Продолжение пятой проверки: самым большим расхождением там был набор высоты Cessna (+49 % у земли, +60 % на 8000 ft).
-Причина была известна: воздушный винт в модели — импульсный диск с постоянным КПД 0,85, а мотор на полном газе отдаёт
-полную мощность при любой скорости. У настоящего винта фиксированного шага обороты не задаются. Они устанавливаются там,
-где момент мотора равен моменту, который поглощает винт. На малой скорости винт «тяжелее», обороты ниже 2700, и мотор
-отдаёт меньше мощности. Правило то же: эталоны — только независимые данные POH 172S (`data/research.md`, часть 4.2),
-ничего под них не подбиралось.
+A continuation of the fifth review: the largest divergence there was the Cessna climb (+49 % at sea level, +60 % at 8000 ft).
+The cause was known: the propeller in the model is a momentum disk with a constant efficiency of 0.85, and the engine at full throttle delivers
+full power at any speed. A real fixed-pitch propeller has no set rpm. The rpm settles where
+engine torque equals the torque the propeller absorbs. At low speed the propeller is "heavier", rpm is below 2700, and the engine
+delivers less power. The rule is the same: the references are only independent 172S POH data (`data/research.md`, part 4.2),
+nothing was tuned to fit them.
 
-### Что сделано в ядре
+### What was done in the core
 
-- **`src/core/propeller.ts` (новый)** — винт по элементам лопасти с импульсной теорией на каждом кольце: осевая
-  и окружная индуктивные скорости, концевые и корневые потери Прандтля. На каждом радиусе решается одно уравнение
-  относительно угла притекания φ (постановка Ning 2014, записанная для винта):
-  `Ωr·(sin²φ − σ'·Cn/4F) − V·(sin φ·cos φ + σ'·Ct/4F) = 0`. Особенности при V = 0 нет, корень ищется делением отрезка.
-  Коэффициенты сечения берутся из общей модели `airfoilCoeffs` (весь круг углов, Прандтль — Глауэрт, рост сопротивления
-  от сжимаемости из шестой проверки). Есть `propellerEquilibrium` — равновесные обороты при заданном моменте мотора.
-- **`src/core/sim.ts`** — у привода `propeller` есть необязательный блок `fixedPitch`. Если он задан, обороты — переменная
-  состояния: `I·dΩ/dt = Q_мотора − Q_винта`. Момент мотора = газ × `power/ω_ном` × падение с высотой. Без блока всё
-  по-старому (диск с КПД — как винт постоянных оборотов; так собираются проекты из `design.ts`).
-  При газе 0 винт авторотирует и тормозит самолёт. В `Sample` — `propRpm`, `propEfficiency`.
-- **Мотор IO-360-L2A.** На полном газе момент постоянный, мощность пропорциональна оборотам. Основание — сертификат типа
-  EASA.IM.E.032 (Issue 03, 2022, разд. 6 «Ratings», полный газ у земли): 119 кВт (160 hp) при 2400 об/мин и 134 кВт
-  (180 hp) при 2700 об/мин. Это 474 Н·м в обеих точках, с точностью 0,1 % (`data/research.md`, 4.2, п. 7). Ниже 2400 об/мин
-  точек нет, постоянство момента там — допущение. Новое поле `powerplant.ratedRpm` = 2700.
-- **Программа полёта (`programs.ts`).** На полном газе в горизонтальном полёте у земли винт фиксированного шага раскрутил бы
-  мотор до 3080 об/мин. Поэтому программа, как пилот, прибирает газ и держит не больше `ratedRpm`: красная черта 2700
-  (POH, раздел 2). Наибольшая скорость теперь — при этом ограничении, так и определена 126 kt в POH. В результатах
-  полёта новые поля: `vMaxRpm`, `cruiseRpm`, `cruisePropEfficiency`, `climbRpm`, `climbPropEfficiency`. Других аппаратов
-  с `fixedPitch` нет, у них ничего не изменилось.
+- **`src/core/propeller.ts` (new)** — a blade element propeller model with momentum theory on each annulus: axial
+  and tangential induced velocities, Prandtl tip and root losses. At each radius a single equation is solved
+  for the inflow angle φ (the Ning 2014 formulation, written for a propeller):
+  `Ωr·(sin²φ − σ'·Cn/4F) − V·(sin φ·cos φ + σ'·Ct/4F) = 0`. There is no singularity at V = 0; the root is found by bisection.
+  Section coefficients come from the shared `airfoilCoeffs` model (full range of angles, Prandtl–Glauert, compressibility drag rise
+  from the sixth review). There is `propellerEquilibrium` — the equilibrium rpm for a given engine torque.
+- **`src/core/sim.ts`** — the `propeller` drive has an optional `fixedPitch` block. If it is set, rpm is a state
+  variable: `I·dΩ/dt = Q_engine − Q_prop`. Engine torque = throttle × `power/ω_rated` × altitude lapse. Without the block everything
+  is as before (a disk with an efficiency — like a constant-speed propeller; projects from `design.ts` are built this way).
+  At zero throttle the propeller windmills and brakes the aircraft. `Sample` has `propRpm`, `propEfficiency`.
+- **IO-360-L2A engine.** At full throttle torque is constant and power is proportional to rpm. The basis is type certificate
+  EASA.IM.E.032 (Issue 03, 2022, sec. 6 "Ratings", full throttle at sea level): 119 kW (160 hp) at 2400 rpm and 134 kW
+  (180 hp) at 2700 rpm. That is 474 N·m at both points, to within 0.1 % (`data/research.md`, 4.2, item 7). Below 2400 rpm
+  there are no data points; constant torque there is an assumption. New field `powerplant.ratedRpm` = 2700.
+- **Flight program (`programs.ts`).** At full throttle in level flight at sea level the fixed-pitch propeller would spin
+  the engine up to 3080 rpm. So the program, like a pilot, pulls back the throttle and holds no more than `ratedRpm`: the 2700 redline
+  (POH, section 2). Maximum speed is now under this limit, which is how the POH defines its 126 kt. New fields in the flight
+  results: `vMaxRpm`, `cruiseRpm`, `cruisePropEfficiency`, `climbRpm`, `climbPropEfficiency`. No other aircraft
+  have `fixedPitch`; nothing changed for them.
 
-**Винт McCauley 1A170E/JHA7660** (`src/presets/cessna172.ts`): 2 лопасти, D = 76 in (POH), шаг 60 in — по обозначению
-«7660». Шаг у McCauley отсчитывается на 0,75R. Геометрия лопасти не опубликована, поэтому всё остальное — **оценки**.
-Они выбраны до первого прогона и после него не менялись:
+**McCauley 1A170E/JHA7660 propeller** (`src/presets/cessna172.ts`): 2 blades, D = 76 in (POH), pitch 60 in — from the designation
+"7660". McCauley measures pitch at 0.75R. The blade geometry is not published, so everything else is **estimates**.
+They were chosen before the first run and not changed after it:
 
-| Величина | Значение | Основание |
+| Quantity | Value | Basis |
 | --- | --- | --- |
-| распределение шага | постоянный по радиусу | обычное допущение; настоящее распределение неизвестно |
-| начало лопасти | 0,2R | обтекатель втулки |
-| хорда | 0,10 м у корня, 0,125 м на 0,4–0,6R, 0,11 / 0,08 / 0,05 м на 0,8 / 0,95 / 1,0R | кованая лопасть лёгкого самолёта; получилось AF ≈ 80 (обычно 80–100) |
-| профиль | типа Clark Y: c_l0 0,36 от плоской стороны (нулевая подъёмная сила при −3,6°), наклон 5,7/рад, c_l,max 1,3, c_d0 0,008, t/c 0,09 по всей длине | профиль McCauley не опубликован |
-| момент инерции винта с коленвалом | 1,5 кг·м² | на установившиеся режимы не влияет |
+| pitch distribution | constant along the radius | a common assumption; the real distribution is unknown |
+| blade start | 0.2R | hub spinner |
+| chord | 0.10 m at the root, 0.125 m at 0.4–0.6R, 0.11 / 0.08 / 0.05 m at 0.8 / 0.95 / 1.0R | forged light-aircraft blade; resulting AF ≈ 80 (typically 80–100) |
+| airfoil | Clark Y type: c_l0 0.36 from the flat side (zero lift at −3.6°), slope 5.7/rad, c_l,max 1.3, c_d0 0.008, t/c 0.09 along the whole length | the McCauley airfoil is not published |
+| moment of inertia of propeller with crankshaft | 1.5 kg·m² | does not affect steady-state conditions |
 
-### Что показали сверки (`validation.ts`, раздел Cessna)
+### What the checks showed (`validation.ts`, Cessna section)
 
-| Что сверено | Эталон | Было (диск, КПД 0,85) | Стало | Итог (допуск) |
+| What was checked | Reference | Before (disk, efficiency 0.85) | Now | Result (tolerance) |
 | --- | --- | --- | --- | --- |
-| статические обороты на полном газе у земли | 2300–2400 (POH, разд. 2) | — | 2614 (+11 %) | **расхождение** (2,5 %) |
-| обороты в расчёте против равновесия моментов | верификация | — | 2614 / 2614 | проходит (0,5 %) |
-| мощность, поглощаемая винтом при скорости и оборотах строки POH, к %BHP той же строки (37 строк) | 1 | — | 0,83 (от −23 до −10 %) | **расхождение** (4 %) |
-| обороты в полёте на крейсере, 7 строк рис. 5-8 | 2100–2550 | — | +0,8…+2,5 %, в среднем +1,5 % | 5 проходят, 2 на 2000 ft — **расхождение** +2,2 и +2,5 % (2 %) |
-| мощность на крейсере, те же 7 строк | %BHP | −4…−9 % | −5,9…−11,1 %, в среднем −9,4 % | 1 проходит, 6 — **расхождение** (8 %) |
-| наибольшая скорость у земли, ≤ 2700 об/мин | 126 kt | +5,2 % (полный газ, без ограничения оборотов) | 122,8 kt (−2,5 %) | проходит (4 %) |
-| наибольшая скорость на 8000 ft, ≤ 2700 об/мин (строка 2700 об/мин, 77 % — полный газ) | 124 KTAS | — | 120,6 kt (−2,7 %) | проходит (4 %) |
-| скороподъёмность у земли | 730 fpm | 1085 (+49 %) | 862 (+18 %), 2414 об/мин, КПД винта 0,68 | **расхождение** (10 %) |
-| скороподъёмность на 8000 ft | 410 fpm | 657 (+60 %) | 482 (+17 %), 2410 об/мин, КПД 0,71 | **расхождение** (10 %) |
+| static rpm at full throttle at sea level | 2300–2400 (POH, sec. 2) | — | 2614 (+11 %) | **divergence** (2.5 %) |
+| rpm in the simulation vs. torque equilibrium | verification | — | 2614 / 2614 | passes (0.5 %) |
+| power absorbed by the propeller at the speed and rpm of a POH row, relative to that row's %BHP (37 rows) | 1 | — | 0.83 (from −23 to −10 %) | **divergence** (4 %) |
+| rpm in cruise flight, 7 rows of Fig. 5-8 | 2100–2550 | — | +0.8…+2.5 %, on average +1.5 % | 5 pass, 2 at 2000 ft — **divergence** +2.2 and +2.5 % (2 %) |
+| cruise power, the same 7 rows | %BHP | −4…−9 % | −5.9…−11.1 %, on average −9.4 % | 1 passes, 6 — **divergence** (8 %) |
+| maximum speed at sea level, ≤ 2700 rpm | 126 kt | +5.2 % (full throttle, no rpm limit) | 122.8 kt (−2.5 %) | passes (4 %) |
+| maximum speed at 8000 ft, ≤ 2700 rpm (2700 rpm row, 77 % — full throttle) | 124 KTAS | — | 120.6 kt (−2.7 %) | passes (4 %) |
+| rate of climb at sea level | 730 fpm | 1085 (+49 %) | 862 (+18 %), 2414 rpm, propeller efficiency 0.68 | **divergence** (10 %) |
+| rate of climb at 8000 ft | 410 fpm | 657 (+60 %) | 482 (+17 %), 2410 rpm, efficiency 0.71 | **divergence** (10 %) |
 
-Допуск каждой строки расписан в коде (погрешность эталона: округление таблиц, обтекатели колёс, тахометр, отбор мощности
-на генератор). Обороты на крейсере мало чувствительны к ошибке мощности: на J ≈ 0,7 C_P винта круто падает с J,
-и 5 % мощности дают около 1 % оборотов. Поэтому их допуск 2 %, а не 8 %.
+The tolerance of each row is spelled out in the code (reference uncertainty: table rounding, wheel fairings, tachometer, power extraction
+for the alternator). Cruise rpm is not very sensitive to power error: at J ≈ 0.7 the propeller's C_P falls steeply with J,
+and 5 % of power gives about 1 % of rpm. Hence their tolerance is 2 %, not 8 %.
 
-Как на эти числа повлиял рост сопротивления от сжимаемости (шестая проверка, вошёл параллельно): без него статические обороты
-были 3105, набор — 991 и 588 fpm, поглощаемая мощность — −19 %. Концы лопастей идут при M 0,75–0,92, и волновое сопротивление
-делает винт заметно «тяжелее». Толщина лопасти в модели одна, 0,09, а у конца настоящей лопасти она около 0,06,
-поэтому волновое сопротивление на конце, вероятно, завышено.
+How the compressibility drag rise (sixth review, merged in parallel) affected these numbers: without it static rpm
+was 3105, climb — 991 and 588 fpm, absorbed power — −19 %. The blade tips run at M 0.75–0.92, and wave drag
+makes the propeller noticeably "heavier". The model uses a single blade thickness, 0.09, while at the tip of a real blade it is about 0.06,
+so wave drag at the tip is probably overestimated.
 
-### Что это значит
+### What this means
 
-- **Набор высоты**: расхождение сократилось с +49…+60 % до +17…+18 %. Осталось оно по трём причинам, каждая в одну сторону.
-  1. Винт модели «лёгкий»: при тех же скорости и оборотах он поглощает на 10–23 % меньше мощности, чем настоящий,
-     и сильнее всего на малых J. Обороты в наборе поэтому выше, чем были бы у настоящего винта, и мотор отдаёт больше мощности.
-  2. КПД винта в наборе 0,68–0,71. По оценкам из POH у настоящего около 0,6–0,65. В модели нет торможения потока капотом
-     и прироста сопротивления фюзеляжа в струе винта.
-  3. Планеру модели нужно меньше мощности, чем настоящему: вредное сопротивление 0,36 м² — оценка.
-- **«Лёгкий» винт — вероятно, геометрия.** Угол установки известен только через шаг 60 in. От чего он отсчитан (плоская
-  сторона или хорда) и где у профиля нулевая подъёмная сила — оценки. На J ≈ 0,7 сечения работают при угле атаки около 1°,
-  и ошибка в 1° меняет поглощаемую мощность примерно на 15 %. Для статики чувствительность напечатана в причине расхождения:
-  с хордой ×1,25 (AF 100, тоже обычное значение) было бы 2315 об/мин, с c_l,max 1,6 — 2192. Хорду я не менял: это была бы
-  подгонка под проверяемое число. Есть и признак, что дело не только в геометрии: винт APC 9x4.7 SF, собранный по
-  **измеренной** геометрии UIUC, на месте тоже недобирает C_T и C_P на 20–26 % (раздел «малый винт»). Вне эксперимента
-  я прогнал тот же APC через новый решатель: C_T 0,095, C_P 0,036, FM 0,651. Прежняя модель лопастей на телах Rapier
-  дала 0,644 — две разные реализации согласуются.
-- **Обороты на крейсере совпали с POH в пределах 0,8–2,5 %** — отчасти потому, что две ошибки гасят друг друга.
-  Из-за «лёгкого» винта обороты выше, а планеру нужно меньше мощности, и это их снижает.
-- **Крейсерская мощность** стала на 3 % ниже POH, чем была. Раньше КПД диска (0,85 от идеального, около 0,80) случайно
-  оказался близок к настоящему. Теперь КПД изолированного винта модели на крейсере 0,82–0,85: нет потерь от капота и струи на фюзеляже.
-  Значит, прежнее «в среднем −6,5 %» отчасти держалось на заниженном КПД винта.
-- **Вердикты.** Перегруженная Cessna по-прежнему «Не взлетает». Набор у модели всё ещё оптимистичен, но примерно втрое
-  меньше, чем раньше. Наибольшая скорость теперь ограничена 2700 об/мин и стала на 7 % ниже прежней.
+- **Climb**: the divergence shrank from +49…+60 % to +17…+18 %. It remains for three reasons, each pushing the same way.
+  1. The model propeller is "light": at the same speed and rpm it absorbs 10–23 % less power than the real one,
+     most of all at low J. Climb rpm is therefore higher than it would be with the real propeller, and the engine delivers more power.
+  2. Propeller efficiency in the climb is 0.68–0.71. Estimates from the POH put the real one at about 0.6–0.65. The model lacks flow blockage by the cowling
+     and the increase in fuselage drag in the propeller slipstream.
+  3. The model airframe needs less power than the real one: the parasite drag area of 0.36 m² is an estimate.
+- **The "light" propeller is probably the geometry.** The blade angle is known only through the 60 in pitch. What it is measured from (the flat
+  side or the chord) and where the airfoil's zero lift lies are estimates. At J ≈ 0.7 the sections operate at an angle of attack of about 1°,
+  and a 1° error changes absorbed power by about 15 %. For the static case, the sensitivity is printed in the divergence reason:
+  with chord ×1.25 (AF 100, also a typical value) it would be 2315 rpm, with c_l,max 1.6 — 2192. I did not change the chord: that would be
+  fitting to the number being checked. There is also a sign that it is not only the geometry: the APC 9x4.7 SF propeller, built from
+  UIUC **measured** geometry, also falls short on C_T and C_P by 20–26 % in static conditions (the "small propeller" section). Outside the experiment
+  I ran the same APC through the new solver: C_T 0.095, C_P 0.036, FM 0.651. The previous model of blades as Rapier bodies
+  gave 0.644 — two different implementations agree.
+- **Cruise rpm matched the POH within 0.8–2.5 %** — partly because two errors cancel each other.
+  The "light" propeller raises rpm, while the airframe needs less power, which lowers it.
+- **Cruise power** is now 3 % further below the POH than before. Previously the disk efficiency (0.85 of ideal, about 0.80) happened
+  to be close to the real one. Now the isolated model propeller efficiency in cruise is 0.82–0.85: there are no losses from the cowling and from the slipstream on the fuselage.
+  So the earlier "on average −6.5 %" partly rested on an underestimated propeller efficiency.
+- **Verdicts.** The overloaded Cessna is still "Does not fly". The model's climb is still optimistic, but roughly three times
+  less so than before. Maximum speed is now limited by 2700 rpm and has become 7 % lower than before.
 
-### Что осталось
+### What remains
 
-- Измеренная геометрия лопасти McCauley 1A170E (угол установки и хорда по радиусу, профиль) или продувка этого винта.
-  Без них «лёгкость» не разделить на геометрию и модель сечения.
-- Задержка срыва на вращающейся лопасти (Snel, Du — Selig) и плавный срыв за c_l,max. Это касается статики и малых J,
-  и тех же поправок ждёт малый винт APC.
-- Торможение потока перед винтом капотом и втулкой, прирост сопротивления фюзеляжа в струе.
-- Толщина лопасти по радиусу (сейчас 0,09 по всей длине).
-- Реактивный момент и гироскопический момент винта на корпус не моделируются, как и раньше.
-- Винт фиксированного шага для проектов из сборщика (`design.ts`): там по-прежнему диск. Нужна оценка геометрии по диаметру и
-  мощности.
-- `dist/` не пересобран: отпечатки телеметрии Cessna в браузерной сборке до пересборки не совпадут с Node.
+- Measured geometry of the McCauley 1A170E blade (blade angle and chord along the radius, airfoil) or a wind-tunnel test of this propeller.
+  Without them the "lightness" cannot be split between geometry and the section model.
+- Stall delay on a rotating blade (Snel, Du–Selig) and gradual stall beyond c_l,max. This affects the static case and low J,
+  and the small APC propeller awaits the same corrections.
+- Flow blockage ahead of the propeller by the cowling and hub, the increase in fuselage drag in the slipstream.
+- Blade thickness along the radius (currently 0.09 along the whole length).
+- Propeller reaction torque and gyroscopic moment on the airframe are not modelled, as before.
+- A fixed-pitch propeller for projects from the builder (`design.ts`): they still use a disk. An estimate of geometry from diameter and
+  power is needed.
+- `dist/` has not been rebuilt: Cessna telemetry fingerprints in the browser build will not match Node until it is rebuilt.
 
-## Седьмая проверка физики: динамический срыв — измеренные петли NACA 0012 и вихрь Беддоуза — Лейшмана (2026-11-12)
+## Seventh physics check: dynamic stall — measured NACA 0012 loops and the Beddoes–Leishman vortex (2026-11-12)
 
 ```bash
-VALIDATE_ONLY=dynstall npm run physics -- --validate   # только этот раздел, около 10 с
-VALIDATE_ONLY=flappers npm run physics -- --validate   # SmartBird и Snowbird
-npm run check   # общий прогон 2026-11-12: 346 проверок — 284 проходят, 62 «РАСХОЖДЕНИЕ» (25 из них — петли срыва), провалов нет
+VALIDATE_ONLY=dynstall npm run physics -- --validate   # this section only, about 10 s
+VALIDATE_ONLY=flappers npm run physics -- --validate   # SmartBird and Snowbird
+npm run check   # full run 2026-11-12: 346 checks — 284 pass, 62 "DIVERGENCE" (25 of them are stall loops), no failures
 ```
 
-Повод — Snowbird с опубликованной кинематикой (раздел «Пятая проверка физики» ниже): тяга около трети сопротивления,
-хотя настоящий аппарат летал 19,3 с. Законцовка работает при кинематическом угле атаки около ±23°, в режиме
-динамического срыва, а в модели был упрощённый Беддоуз — Лейшман без вихря динамического срыва.
+The trigger was Snowbird with its published kinematics (section "Fifth physics check" below): thrust about a third of drag,
+even though the real aircraft flew for 19.3 s. The wingtip operates at a kinematic angle of attack of about ±23°, in the
+dynamic stall regime, while the model had a simplified Beddoes–Leishman without the dynamic stall vortex.
 
-### Эталон: измеренные петли
+### Reference: measured loops
 
-McAlister, Pucci, McCroskey, Carr, **NASA TM-84245** (1982), т. 2: профиль NACA 0012 качается вокруг ¼ хорды,
-α = A0 + A1·sin ωt, силы — интегралы давления. Числовых таблиц в отчёте нет, только графики. Взято 15 кадров:
-при M 0,035 и 0,072 (Re 0,5 и 1,0·10⁶ — как у законцовки Snowbird, Re ≈ 3·10⁵, k ≈ 0,19) и при M 0,3 (Re 3,6·10⁶).
-k от 0,024 до 0,25. Напечатанные в шапке страницы итоги (C_L,max и его угол, C_M,min, C_D,max) взяты как есть.
-Петли C_L, C_D, C_M против ωt оцифрованы программно по засечкам осей (`data/digitize-tm84245.py`); максимумы
-оцифровки совпадают с напечатанными в пределах 0–2 %. Данные — `src/cli/dynamic-stall-data.ts`, источники и
-адреса — `data/research.md`, раздел 4.7.
+McAlister, Pucci, McCroskey, Carr, **NASA TM-84245** (1982), vol. 2: an NACA 0012 airfoil pitches about the ¼ chord,
+α = A0 + A1·sin ωt, forces are pressure integrals. The report has no numerical tables, only plots. 15 frames were taken:
+at M 0.035 and 0.072 (Re 0.5 and 1.0·10⁶ — like the Snowbird wingtip, Re ≈ 3·10⁵, k ≈ 0.19) and at M 0.3 (Re 3.6·10⁶).
+k from 0.024 to 0.25. The summary values printed in the page header (C_L,max and its angle, C_M,min, C_D,max) are taken as is.
+The C_L, C_D, C_M loops versus ωt were digitized programmatically from the axis ticks (`data/digitize-tm84245.py`); the digitized
+maxima match the printed ones within 0–2 %. Data — `src/cli/dynamic-stall-data.ts`, sources and
+URLs — `data/research.md`, section 4.7.
 
-Модель в сверке — то же крыло стенда: деталь `Sim` с нестационарным обтеканием, угол задаётся каналом каждый шаг.
-Статическая поляра — не из петель: при M 0,3 c_l,max 1,39 — статика того же опыта; при малых Re — c_l,max 1,00 (TN 3361,
-Re 0,5·10⁶) и 1,19 (TN 1945, Re 1·10⁶). Допуск — по точности опыта: ±0,03 по C_L,max при M 0,3, «примерно в 5 раз»
-хуже при M 0,035 (т. 1, с. 13), поправка на стенки 1,5 %, оцифровка, статика из других труб: 6 % при M 0,3, 8 % при
-M 0,07, 10 % при M 0,035.
+The model under comparison is the same wing as the stand's: a `Sim` part with unsteady flow, the angle set by a channel at every step.
+The static polar is not taken from the loops: at M 0.3 c_l,max 1.39 — the static data of the same experiment; at low Re — c_l,max 1.00 (TN 3361,
+Re 0.5·10⁶) and 1.19 (TN 1945, Re 1·10⁶). Tolerance follows the experimental accuracy: ±0.03 in C_L,max at M 0.3, "about 5 times"
+worse at M 0.035 (vol. 1, p. 13), wall correction 1.5 %, digitization, static data from other tunnels: 6 % at M 0.3, 8 % at
+M 0.07, 10 % at M 0.035.
 
-### Что показала сверка без вихря (как было)
+### What the comparison without the vortex showed (as before)
 
-| Кадры | Наибольший C_L | Средняя за цикл нормальная сила |
+| Frames | Peak C_L | Cycle-mean normal force |
 | --- | --- | --- |
-| M 0,3, A0 15°, k 0,05–0,15 | −17…−28 %; максимум на 1,7–3,6° раньше | −6…−8 % |
-| M 0,035–0,07 | −30…−43 % (1,2–1,7 против 2,1–2,4) | −15…−36 % |
+| M 0.3, A0 15°, k 0.05–0.15 | −17…−28 %; peak 1.7–3.6° too early | −6…−8 % |
+| M 0.035–0.07 | −30…−43 % (1.2–1.7 versus 2.1–2.4) | −15…−36 % |
 
-Опыт: при A0 ≈ 15° и k ≈ 0,1 наибольший C_L 2,1–2,3 почти не зависит от Re (0,5–3,6·10⁶), хотя статический c_l,max
-растёт с 1,0 до 1,4. Это и есть вихрь динамического срыва: подъёмная сила держится и растёт за статическим срывом,
-пока вихрь у передней кромки не сойдёт за заднюю.
+Experiment: at A0 ≈ 15° and k ≈ 0.1 the peak C_L of 2.1–2.3 hardly depends on Re (0.5–3.6·10⁶), even though the static c_l,max
+rises from 1.0 to 1.4. This is the dynamic stall vortex: lift holds and grows beyond static stall
+until the leading-edge vortex passes off the trailing edge.
 
-### Что изменено в ядре
+### What was changed in the core
 
-`src/core/aero.ts`, `dynamicStall`: к запаздыванию давления (Tp) и отрыва (Tf) добавлен вихрь по схеме Беддоуза —
-Лейшмана. Завихренность C_V — разность нормальной силы безотрывного обтекания и силы с запаздывающим отрывом (в схеме
-C_N^C·(1 − K_N)); её приращения переходят в нормальную силу вихря с запаздыванием Tv, пока вихрь над профилем
-(τ_v ≤ Tvl от начала срыва по критерию). Потом сила вихря спадает с Tv/2; при продолжающемся срыве через Tvl + Tsh
-начинается следующий вихрь (Tsh = 2(1 − w)/St). Начало срыва — запаздывающий угол за статическим срывным, т. е. C_N1 —
-статическая нормальная сила срыва. Постоянные — опубликованные для NACA 0012, под эталоны не подбирались:
-Tp 1,7, Tf 3,0, Tv 6,0 (Leishman & Beddoes; те же числа — значения по умолчанию OpenFAST AeroDyn), Tvl 7,0 (Leishman &
-Beddoes 1986 для NACA 0012 при M 0,3; в OpenFAST по умолчанию 11), St 0,19. Не введены поправки Tf и Tv по стадиям
-цикла (в OpenFAST — множители 0,25…4), подсасывающая сила вихря и момент тангажа. Действует только на детали
-с нестационарным обтеканием — это машущие крылья; винты, самолёты и вертолёты не затронуты.
+`src/core/aero.ts`, `dynamicStall`: a vortex following the Beddoes–Leishman scheme was added to the pressure lag (Tp) and
+separation lag (Tf). The vorticity C_V is the difference between the attached-flow normal force and the force with lagged separation (in the scheme
+C_N^C·(1 − K_N)); its increments feed into the vortex normal force with lag Tv while the vortex is over the airfoil
+(τ_v ≤ Tvl from stall onset by the criterion). Then the vortex force decays with Tv/2; if stall continues, after Tvl + Tsh
+the next vortex begins (Tsh = 2(1 − w)/St). Stall onset is the lagged angle beyond the static stall angle, i.e. C_N1 is
+the static stall normal force. The constants are the published ones for NACA 0012, not tuned to the references:
+Tp 1.7, Tf 3.0, Tv 6.0 (Leishman & Beddoes; the same numbers are the OpenFAST AeroDyn defaults), Tvl 7.0 (Leishman &
+Beddoes 1986 for NACA 0012 at M 0.3; the OpenFAST default is 11), St 0.19. Not introduced: the Tf and Tv corrections by cycle
+stage (multipliers 0.25…4 in OpenFAST), the vortex suction force and pitching moment. It acts only on parts
+with unsteady flow — that is, flapping wings; propellers, airplanes and helicopters are not affected.
 
-Проверено также при Tvl = 11 (OpenFAST): наибольший C_L тот же, меняется только спад после пика.
+Also checked with Tvl = 11 (OpenFAST): the peak C_L is the same, only the post-peak decay changes.
 
-### Что показала сверка с вихрем
+### What the comparison with the vortex showed
 
-| Кадры | Наибольший C_L | Угол наибольшего C_L | Средняя нормальная сила |
+| Frames | Peak C_L | Angle of peak C_L | Mean normal force |
 | --- | --- | --- | --- |
-| M 0,3, A0 15°, k 0,05–0,15 | −8…−17 % | как в опыте (±0,7°) | в пределах 1–3 % — **проходит** |
-| M 0,3, A0 10°, k 0,024 и 0,145 | −6 и −10 % | как в опыте | 0,4 % (проходит) и **+19 %** |
-| M 0,035–0,07, A0 15° | −25…−31 % | на 1,4–3,4° раньше | −9…−17 % (1 из 7 проходит) |
-| M 0,035, A0 10° (α от 0 до 20°) | −28…−35 % | на 0,7–1,3° раньше | −22…−28 % |
+| M 0.3, A0 15°, k 0.05–0.15 | −8…−17 % | as in the experiment (±0.7°) | within 1–3 % — **passes** |
+| M 0.3, A0 10°, k 0.024 and 0.145 | −6 and −10 % | as in the experiment | 0.4 % (passes) and **+19 %** |
+| M 0.035–0.07, A0 15° | −25…−31 % | 1.4–3.4° too early | −9…−17 % (1 of 7 passes) |
+| M 0.035, A0 10° (α from 0 to 20°) | −28…−35 % | 0.7–1.3° too early | −22…−28 % |
 
-- Средняя по 15 петлям ошибка C_L,max 31,5 % → 23,5 %, СКО C_L по циклу 0,41 → 0,34 (проверка «вихрь приближает модель
-  к опыту» — проходит).
-- **Остаток при M 0,3** — пик ниже на 8–17 %: за срывом сила в модели падает к пластине Хёрнера быстрее, чем у профиля,
-  и вторичные вихри (второй пик C_L в опыте) почти не набирают силы. В лёгком срыве (A0 10°, k 0,145) модель
-  завышает силу на обратном ходе на 19 %: в опыте обтекание восстанавливается медленнее, чем за Tf = 3 полухорды
-  (в полной схеме Tf на восстановлении увеличивают; здесь не введено).
-- **Остаток при малых Re** вдвое больше. Статический срыв NACA 0012 при Re 0,5–1·10⁶ ранний (c_l,max 1,0–1,2 —
-  лопается ламинарный пузырь у носка), а при качании профиль держит безотрывное обтекание до 18–20°, как при
-  Re 3,6·10⁶. Модель начинает срыв от статического угла. Справочно: со статикой высокого Re (c_l,max 1,39) петли малых
-  Re дают C_L,max −20 %, среднюю C_N −3 % — расхождение средней силы почти целиком от раннего статического срыва.
-  Подставлять в модель «динамический» c_l,max вместо измеренного статического было бы подгонкой; не сделано.
+- The mean C_L,max error over the 15 loops went from 31.5 % → 23.5 %, the RMS of C_L over the cycle 0.41 → 0.34 (the check "the vortex brings the model
+  closer to the experiment" — passes).
+- **Residual at M 0.3** — the peak is 8–17 % low: beyond stall the force in the model drops toward the Hoerner flat plate faster than for the airfoil,
+  and the secondary vortices (the second C_L peak in the experiment) gain almost no strength. In light stall (A0 10°, k 0.145) the model
+  overestimates the force on the return stroke by 19 %: in the experiment the flow reattaches more slowly than within Tf = 3 half-chords
+  (in the full scheme Tf is increased during reattachment; not introduced here).
+- **Residual at low Re** is twice as large. The static stall of NACA 0012 at Re 0.5–1·10⁶ is early (c_l,max 1.0–1.2 —
+  the laminar bubble at the nose bursts), while in pitching the airfoil holds attached flow up to 18–20°, as at
+  Re 3.6·10⁶. The model starts stall from the static angle. For information: with the high-Re static data (c_l,max 1.39) the low-Re
+  loops give C_L,max −20 %, mean C_N −3 % — the mean-force divergence comes almost entirely from the early static stall.
+  Substituting a "dynamic" c_l,max into the model in place of the measured static one would be curve-fitting; not done.
 
-### Махолёты после изменения
+### Ornithopters after the change
 
-| | Без вихря | С вихрем | Эталон |
+| | Without vortex | With vortex | Reference |
 | --- | --- | --- | --- |
-| Snowbird: (сопротивление + наибольший избыток тяги) / сопротивление | 0,33 (−36,0 Н) | 0,42 (−31,4 Н) | ≈ 0,915 по рекордному полёту — **расхождение** остаётся |
-| Snowbird: мощность в трубе без возврата | 431 Вт | 531 Вт | 620–680 Вт у авторов — расчёт, не измерение |
-| SmartBird: мощность на валах при 4,7 м/с | 5,26 Вт | 5,25 Вт | 4,4–5,9 Вт — проходит |
-| SmartBird: запас тяги (справочно) | 9,0 % веса | 11,8 % веса | — |
+| Snowbird: (drag + peak excess thrust) / drag | 0.33 (−36.0 N) | 0.42 (−31.4 N) | ≈ 0.915 from the record flight — **divergence** remains |
+| Snowbird: power in the tunnel without recovery | 431 W | 531 W | 620–680 W by the authors — a calculation, not a measurement |
+| SmartBird: shaft power at 4.7 m/s | 5.26 W | 5.25 W | 4.4–5.9 W — passes |
+| SmartBird: thrust margin (for information) | 9.0 % of weight | 11.8 % of weight | — |
 
-Вердикт Snowbird — по-прежнему «Не взлетает». Вихрь закрыл около шестой части разрыва по тяге. По сверке с петлями
-модель при Re законцовки Snowbird занижает среднюю нормальную силу на 9–28 % (больше всего — при качании от 0 до 20°, как у законцовки) и пик на 25–35 % — этого хватает, чтобы
-объяснить заметную часть оставшегося разрыва, но не весь: сопротивление в планировании модель тоже занижает на 22 %
-(т. е. в полёте настоящему крылу нужна ещё большая тяга, чем модели). Что ещё не учтено у Snowbird: изгиб и закрутка
-настоящего лонжерона по размаху (у модели — шарнир на 6 м и линейная закрутка), профиль DT-HPO1 вместо NACA 0012
-(постоянные срыва — для NACA 0012), влияние земли на тягу.
+The Snowbird verdict is still "Does not fly". The vortex closed about a sixth of the thrust gap. According to the loop comparison,
+at the Snowbird wingtip Re the model underestimates the mean normal force by 9–28 % (most of all when pitching from 0 to 20°, as at the wingtip) and the peak by 25–35 % — enough to
+explain a noticeable part of the remaining gap, but not all of it: the model also underestimates gliding drag by 22 %
+(i.e. in flight the real wing needs even more thrust than the model). What else is not accounted for in Snowbird: the bending and twist
+of the real spar along the span (the model has a hinge at 6 m and linear twist), the DT-HPO1 airfoil instead of NACA 0012
+(the stall constants are for NACA 0012), ground effect on thrust.
 
-### Что осталось
+### What remains
 
-- Ранний статический срыв при малых Re: нужен критерий начала динамического срыва по давлению у носка (C_N1 из
-  опыта, а не статический c_l,max), или поляра, у которой срыв при Re < 1·10⁶ задан пузырём. Сверять с теми же петлями.
-- Поправки Tf на восстановлении обтекания (лёгкий срыв, кадр 9307) и сила вторичных вихрей.
-- Постоянные Tv, Tvl для M < 0,3 не найдены; взяты значения M 0,3.
-- Первоисточники Leishman & Beddoes 1986/1989 не открыты; T_vl = 7 взят по вторичной таблице (диссертация Clark).
+- Early static stall at low Re: needed is a dynamic stall onset criterion based on nose pressure (C_N1 from
+  the experiment rather than the static c_l,max), or a polar in which stall at Re < 1·10⁶ is defined by the bubble. Validate against the same loops.
+- Tf corrections during flow reattachment (light stall, frame 9307) and the strength of secondary vortices.
+- Constants Tv, Tvl for M < 0.3 were not found; the M 0.3 values are used.
+- The primary sources Leishman & Beddoes 1986/1989 were not accessed; T_vl = 7 is taken from a secondary table (Clark's dissertation).
 
-## Шестая проверка физики: сжимаемость на конце лопасти и соосные винты (2026-11-12)
+## Sixth physics check: blade-tip compressibility and coaxial rotors (2026-11-12)
 
-Продолжение пятой проверки (раздел ниже): два расхождения висения с измерениями — R22 висел на 12 % меньшей мощности,
-чем по POH, а соосный винт Харрингтона брал на 14–26 % больше мощности, чем в модели. Правило то же: эталон — измерение,
-параметры под проверяемый аппарат не подбираются. Источники и оцифровка — `data/research.md`, раздел 4.6.
+A continuation of the fifth check (section below): two hover divergences from measurements — the R22 hovered on 12 % less power
+than per the POH, and the Harrington coaxial rotor took 14–26 % more power than in the model. Same rule: the reference is a measurement,
+parameters are not tuned to the aircraft being checked. Sources and digitization — `data/research.md`, section 4.6.
 
-`npm run check` (вместе с работой соседних сессий — винт Cessna и динамический срыв): 346 проверок, 284 проходят,
-62 «РАСХОЖДЕНИЕ», провалов нет; 63 строки справочно.
+`npm run check` (together with work from neighbouring sessions — the Cessna propeller and dynamic stall): 346 checks, 284 pass,
+62 "DIVERGENCE", no failures; 63 lines for information.
 
-### Рост сопротивления от сжимаемости (`src/core/aero.ts`)
+### Compressibility drag rise (`src/core/aero.ts`)
 
-Раньше в модели сжимаемость меняла только наклон c_l (Прандтль — Глауэрт). Теперь к c_d безотрывного обтекания
-добавлено волновое сопротивление по Локу с числом Маха расходимости в форме Корна:
+Previously compressibility in the model changed only the c_l slope (Prandtl–Glauert). Now wave drag per Lock is added to the
+attached-flow c_d, with the drag-divergence Mach number in Korn's form:
 
-    M_dd = κ_A − t/c − s·|c_l|,   M_cr = M_dd − (0,1/80)^⅓,   Δc_d = 20·(M − M_cr)⁴ при M > M_cr
+    M_dd = κ_A − t/c − s·|c_l|,   M_cr = M_dd − (0.1/80)^⅓,   Δc_d = 20·(M − M_cr)⁴ for M > M_cr
 
-Коэффициенты сняты с измерения самого профиля, а не винта: двумерный NACA 0012 в трубе Langley LTPT (Carpenter, NACA TN 4357,
-рис. 5). M_dd (там, где dc_d/dM = 0,1) при α = 0, 4, 6, 8° легли на прямую 0,800 − 0,31·c_l с разбросом ±0,02,
-т. е. κ_A = 0,92, s = 0,31. Классическое s = 0,1 у Корна — для профилей на расчётном c_l; у NACA 0012 под нагрузкой
-M_dd падает втрое быстрее (с этим s Корн — Лок при α = 4–8° почти не давал роста там, где в опыте c_d уже удвоился).
-Член −t/c подтверждает текст того же отчёта: лопасть с концевым NACA 0015 расходится при c̄_l на 0,10 ниже, чем NACA 0012,
-а 0,03 толщины = 0,31 × 0,10.
+The coefficients were taken from a measurement of the airfoil itself, not of a rotor: two-dimensional NACA 0012 in the Langley LTPT tunnel (Carpenter, NACA TN 4357,
+fig. 5). M_dd (where dc_d/dM = 0.1) at α = 0, 4, 6, 8° fell on the line 0.800 − 0.31·c_l with a scatter of ±0.02,
+i.e. κ_A = 0.92, s = 0.31. Korn's classic s = 0.1 is for airfoils at their design c_l; for a loaded NACA 0012
+M_dd drops three times faster (with that s, Korn–Lock at α = 4–8° gave almost no rise where c_d had already doubled in the experiment).
+The −t/c term is confirmed by the text of the same report: a blade with an NACA 0015 tip diverges at a c̄_l 0.10 lower than NACA 0012,
+and 0.03 of thickness = 0.31 × 0.10.
 
-Профили 6-й серии устроены иначе: разрежение у носка у них меньше, и M_dd слабо зависит от c_l. С числами для NACA 0012
-винт с профилем R22 (NACA 63₂-015, Shivers & Carpenter, NACA TN 3850) получал при M_t 0,71 рост мощности +45 %,
-а в опыте только +4,4 %. Поэтому у профиля появилось необязательное поле `dragRise`. У R22 там стоят исходные числа Корна
-для профилей 6-й серии (κ_A = 0,87, s = 0,1; W. H. Mason, «Some Transonic Aerodynamics», с. 51, и «Configuration Aerodynamics», гл. 7; текст Mason не открыт, значения — по двум пересказам) — это опубликованные значения,
-а не подобранные. По умолчанию (все остальные профили) — числа NACA 0012.
+6-series airfoils behave differently: their nose suction peak is smaller, and M_dd depends weakly on c_l. With the NACA 0012 numbers,
+a rotor with the R22 airfoil (NACA 63₂-015, Shivers & Carpenter, NACA TN 3850) got a power rise of +45 % at M_t 0.71,
+while in the experiment it was only +4.4 %. Therefore the airfoil got an optional `dragRise` field. For the R22 it holds Korn's original numbers
+for 6-series airfoils (κ_A = 0.87, s = 0.1; W. H. Mason, "Some Transonic Aerodynamics", p. 51, and "Configuration Aerodynamics", ch. 7; Mason's text was not accessed, the values are from two secondary accounts) — these are published values,
+not tuned ones. By default (all other airfoils) — the NACA 0012 numbers.
 
-### κ_int соосных винтов (`src/core/design.ts`): 1,16 → 1,28
+### κ_int of coaxial rotors (`src/core/design.ts`): 1.16 → 1.28
 
-Первоисточник — работа Лейшмана с Syal (JAHS 2008; выкладки и рисунки — в магистерской диссертации Syal, UMD 2008,
-которую можно скачать). κ_int там — отношение индуктивной мощности пары к двум отдельным винтам при той же нагрузке на диск,
-т. е. то же определение, что в модели. Импульсная теория даёт 1,281, если нижний винт в полностью сжатой струе верхнего:
-это наименьшее возможное значение. Если винты в одной плоскости — 1,414. Для обоих роторов Харрингтона Лейшман и Syal берут 1,28.
-Независимый замер — Cameron, Karpatne, Sirohi (J. Aircraft 2016): верхний винт +18 %, нижний +49 %, в среднем 1,33.
-Значение 1,16 (форум) меньше теоретического минимума; в первоисточниках оно не найдено.
+Primary source — Leishman and Syal's work (JAHS 2008; derivations and figures are in Syal's master's thesis, UMD 2008,
+which is downloadable). There κ_int is the ratio of the induced power of the pair to two isolated rotors at the same disk loading,
+i.e. the same definition as in the model. Momentum theory gives 1.281 if the lower rotor is in the fully contracted wake of the upper one:
+this is the lowest possible value. If the rotors are in the same plane — 1.414. For both Harrington rotors Leishman and Syal use 1.28.
+An independent measurement — Cameron, Karpatne, Sirohi (J. Aircraft 2016): upper rotor +18 %, lower +49 %, 1.33 on average.
+The value 1.16 (from a forum) is below the theoretical minimum; it was not found in the primary sources.
 
-### Найдено и исправлено
+### Found and fixed
 
-1. **Стенд соосного винта собирал верхний винт неправильно** (`hoverRig` в `validation.ts`, ошибка пятой проверки).
-   У зеркальной лопасти (винт по часовой) корень ставился по другую сторону оси, и лопасть шла через ось. Такой винт
-   давал в 4,5 раза меньше тяги. Пятая проверка сравнивала с опытом пару, в которой тянул в основном один винт. С исправленным
-   стендом и прежним κ_int = 1,16 ротор 1 Харрингтона даёт −7…−14 % вместо −14…−26 %: при малой тяге ошибка стенда
-   была главной причиной, при большой — κ_int. Сборщик вертолётов (`design.ts`) и пресет квадрокоптера ставят лопасть
-   правильно, их ошибка не касалась.
-2. **Нет волнового сопротивления** — добавлено (выше).
-3. **κ_int = 1,16** — заменено на 1,28 (выше).
+1. **The coaxial rotor rig assembled the upper rotor incorrectly** (`hoverRig` in `validation.ts`, a bug from the fifth check).
+   For the mirrored blade (clockwise rotor) the root was placed on the other side of the axis, and the blade went through the axis. Such a rotor
+   produced 4.5 times less thrust. The fifth check compared the experiment against a pair in which mostly one rotor was producing thrust. With the fixed
+   rig and the old κ_int = 1.16, Harrington rotor 1 gives −7…−14 % instead of −14…−26 %: at low thrust the rig bug
+   was the main cause, at high thrust — κ_int. The helicopter builder (`design.ts`) and the quadcopter preset place the blade
+   correctly; the bug did not affect them.
+2. **No wave drag** — added (above).
+3. **κ_int = 1.16** — replaced with 1.28 (above).
 
-### Что показали измерения
+### What the measurements showed
 
-| Что сверено | Эталон (измерение) | Модель | Итог |
+| What was compared | Reference (measurement) | Model | Result |
 | --- | --- | --- | --- |
-| NACA 0012, M при росте c_d на 0,002 и на 0,01 (α = 0, 4, 6, 8°) | двумерная продувка (TN 4357, рис. 5) | при 4–8° в пределах 0–2,5 %; при 0° на 3,8 % позже | 6 из 8 проходят (допуск 3 %); при α = 0 **расхождение**: одна прямая M_dd(c_l) на все углы |
-| Полноразмерный винт NACA 0012: FM_max(M_t)/FM_max(0,28) при M_t 0,62, 0,66, 0,70 | TN 4357, рис. 8 и текст: 0,933, 0,907, 0,893 | 0,946, 0,905, 0,850 | при 0,62 и 0,66 проходят (допуск 4 %); при 0,70 **расхождение** −4,8 %: у конца настоящей лопасти рост положе (трёхмерное обтекание) |
-| Соосный винт Харрингтона, ротор 1, κ_int = 1,28 | TN 2318, рис. 4 | −3,7 %, −3,8 %, −7,7 % (с 1,16: −6,8, −10,1, −13,6 %) | 2 из 3 проходят (допуск 5 %) |
-| Соосный винт Харрингтона, ротор 2 (новый, независимый) | TN 2318, рис. 8 | +8,2 %, +0,8 %, −5,9 % (с 1,16: +3,8, −5,8, −13,8 %) | 2 из 3 проходят (допуск 7 %) |
-| Одиночный винт Харрингтона, ротор 2 | то же | −1,2…−4,7 % | проходит |
-| Винт NACA 63₂-015 (профиль R22): рост мощности при M_t 0,71 против 0,31, C_T 0,0037 | TN 3850, текст: +4,4 % | +7,1 % | проходит (допуск 4 %) |
-| Тот же винт: C_Q при M_t 0,31, C_T 0,0037 | TN 3850, рис. 2: 2,25·10⁻⁴ (FM ≈ 0,71) | 2,37·10⁻⁴ (+5,5 %) | проходит (допуск 6 %) |
-| R22: шесть точек потолка висения OGE | POH стр. 5-10 | −8,7…−13,2 % (было −8,7…−13,3 %) | **расхождение** остаётся: сжимаемость добавляет около 1 % |
+| NACA 0012, M at a c_d rise of 0.002 and of 0.01 (α = 0, 4, 6, 8°) | two-dimensional tunnel test (TN 4357, fig. 5) | at 4–8° within 0–2.5 %; at 0° 3.8 % late | 6 of 8 pass (tolerance 3 %); at α = 0 **divergence**: a single M_dd(c_l) line for all angles |
+| Full-scale NACA 0012 rotor: FM_max(M_t)/FM_max(0.28) at M_t 0.62, 0.66, 0.70 | TN 4357, fig. 8 and text: 0.933, 0.907, 0.893 | 0.946, 0.905, 0.850 | at 0.62 and 0.66 pass (tolerance 4 %); at 0.70 **divergence** −4.8 %: at the tip of a real blade the rise is gentler (three-dimensional flow) |
+| Harrington coaxial rotor, rotor 1, κ_int = 1.28 | TN 2318, fig. 4 | −3.7 %, −3.8 %, −7.7 % (with 1.16: −6.8, −10.1, −13.6 %) | 2 of 3 pass (tolerance 5 %) |
+| Harrington coaxial rotor, rotor 2 (new, independent) | TN 2318, fig. 8 | +8.2 %, +0.8 %, −5.9 % (with 1.16: +3.8, −5.8, −13.8 %) | 2 of 3 pass (tolerance 7 %) |
+| Harrington single rotor, rotor 2 | same | −1.2…−4.7 % | passes |
+| NACA 63₂-015 rotor (R22 airfoil): power rise at M_t 0.71 versus 0.31, C_T 0.0037 | TN 3850, text: +4.4 % | +7.1 % | passes (tolerance 4 %) |
+| Same rotor: C_Q at M_t 0.31, C_T 0.0037 | TN 3850, fig. 2: 2.25·10⁻⁴ (FM ≈ 0.71) | 2.37·10⁻⁴ (+5.5 %) | passes (tolerance 6 %) |
+| R22: six OGE hover ceiling points | POH p. 5-10 | −8.7…−13.2 % (was −8.7…−13.3 %) | **divergence** remains: compressibility adds about 1 % |
 
-**R22: сжимаемость — не главная причина.** По измерениям на винте того же профиля (TN 3850) рост мощности от сжимаемости
-при M_t 0,71 всего 4,4 %, а у R22 M_t 0,60–0,67 (104 % оборотов, −20…+40 °C) — ещё меньше. В модели он добавил R22
-около 1 % (−20 °C: −12,0 → −11,1 %). Сам винт модель считает даже на 5 % дороже опыта (тот же TN 3850 при малом M_t).
-Значит, 11–13 % сидят вне аэродинамики лопасти: нагрузка от струи на кабину (2–5 % тяги) не учтена; доля хвостового винта
-и трансмиссии (15 %) — оценка; толкование крутого участка графика POH как взлётных 131 BHP — тоже оценка. Подгонять
-ни одно из этих чисел под POH не стали.
+**R22: compressibility is not the main cause.** According to measurements on a rotor with the same airfoil (TN 3850), the compressibility power rise
+at M_t 0.71 is only 4.4 %, and the R22 has M_t 0.60–0.67 (104 % rpm, −20…+40 °C) — even less. In the model it added about
+1 % to the R22 (−20 °C: −12.0 → −11.1 %). The model even computes the rotor itself 5 % more expensive than the experiment (the same TN 3850 at low M_t).
+So the 11–13 % lies outside blade aerodynamics: the downwash load on the cabin (2–5 % of thrust) is not accounted for; the tail rotor
+and transmission share (15 %) is an estimate; interpreting the steep portion of the POH chart as the takeoff 131 BHP is also an estimate. None of these
+numbers was tuned to the POH.
 
-Пока проверялся только профиль 0012, с ним R22 при −20 °C (M_t 0,667) получал +18 % мощности, а при +20 °C — +2 %.
-Такой разброс — признак, что коэффициенты 0012 к 6-й серии не переносятся. Поэтому отдельный винт TN 3850 нужен был
-как независимая сверка.
+While only the 0012 airfoil was being checked, with it the R22 at −20 °C (M_t 0.667) got +18 % power, and at +20 °C — +2 %.
+Such a spread is a sign that the 0012 coefficients do not carry over to the 6-series. That is why the separate TN 3850 rotor was needed
+as an independent check.
 
-Средняя квадратичная ошибка соосной пары по шести точкам двух роторов — 5,6 % с κ_int = 1,28 и 9,9 % с 1,16.
-Остаток — в наклоне: по опыту отношение «пара / два отдельных винта» растёт с тягой (ротор 1: 1,22 → 1,37,
-ротор 2: 1,09 → 1,28), а κ_int модели постоянный. Поэтому при малой тяге модель завышает мощность пары, при большой занижает.
+The RMS error of the coaxial pair over six points of the two rotors is 5.6 % with κ_int = 1.28 and 9.9 % with 1.16.
+The residual is in the slope: in the experiment the "pair / two isolated rotors" ratio grows with thrust (rotor 1: 1.22 → 1.37,
+rotor 2: 1.09 → 1.28), while the model's κ_int is constant. Therefore at low thrust the model overestimates the pair's power, and at high thrust underestimates it.
 
-### Что изменилось у аппаратов
+### What changed for the aircraft
 
-- **Соосные вертолёты** (Ка-26, Ка-32, проекты из сборщика): индуктивная мощность пары выросла в 1,28/1,16 = 1,10 раза,
-  мощность висения — примерно на 8 % (проект Ка-26: 473 кВт, взаимное влияние ×1,194 вместо ×1,10). Ка-32 по-прежнему
-  «Летает» (2310 из 3266 кВт).
-- **Несущие винты на M_t > 0,6** (R22 и любые быстрые винты): на концах лопастей растёт профильная мощность.
-- **Воздушные винты самолётов**: концы лопастей при M 0,75–0,9 получают волновое сопротивление (касается модели винта
-  по элементам лопасти; у винта-диска с постоянным КПД — нет).
-- Крылья самолётов, махолёты и малые винты (M < 0,5): без изменений. Δc_d считается по срывному C_L,
-  поэтому за срывом и при малых M ложного роста нет.
+- **Coaxial helicopters** (Ka-26, Ka-32, designs from the builder): the pair's induced power increased by a factor of 1.28/1.16 = 1.10,
+  hover power — by about 8 % (Ka-26 design: 473 kW, mutual interference ×1.194 instead of ×1.10). The Ka-32 still
+  "Flies" (2310 of 3266 kW).
+- **Main rotors at M_t > 0.6** (R22 and any fast rotors): profile power increases at the blade tips.
+- **Airplane propellers**: blade tips at M 0.75–0.9 get wave drag (applies to the blade-element propeller
+  model; not to the actuator-disk propeller with constant efficiency).
+- Airplane wings, ornithopters and small rotors (M < 0.5): unchanged. Δc_d is computed from the stall-limited C_L,
+  so there is no spurious rise beyond stall or at low M.
 
-### Что осталось
+### What remains
 
-- Рост сопротивления за M_dd по Локу (четвёртая степень) положе двумерного опыта и круче опыта на конце лопасти.
-  Поправки на трёхмерное обтекание конца нет (из-за этого FM при M_t 0,70 на 5 % ниже опыта).
-- Семейств профилей два: 4-значные NACA (по умолчанию, по продувке 0012) и 6-я серия (числа Корна). Для 5-значных
-  (23015 — у TN 3850 расходимость раньше, чем у 63₂-015), профилей малых чисел Рейнольдса и сверхкритических своих чисел нет.
-  Сборщик проектов по описанию ставит всем профилям значения по умолчанию.
-- R22 по-прежнему на 9–13 % ниже POH. Кандидаты: нагрузка от струи на кабину, мощность хвостового винта
-  (нужен замер или расчёт хвостового винта R22), толкование графика POH.
-- κ_int постоянный, а в опыте взаимное влияние растёт с тягой; учебник Лейшмана (PHA) так и не открыт.
+- The drag rise beyond M_dd per Lock (fourth power) is gentler than the two-dimensional experiment and steeper than the blade-tip experiment.
+  There is no correction for three-dimensional tip flow (because of this FM at M_t 0.70 is 5 % below the experiment).
+- There are two airfoil families: NACA 4-digit (the default, from the 0012 tunnel test) and the 6-series (Korn's numbers). For 5-digit
+  airfoils (23015 — in TN 3850 it diverges earlier than 63₂-015), low-Reynolds-number airfoils and supercritical airfoils there are no specific numbers.
+  The text-description project builder gives all airfoils the default values.
+- The R22 is still 9–13 % below the POH. Candidates: the downwash load on the cabin, tail rotor power
+  (a measurement or calculation of the R22 tail rotor is needed), the interpretation of the POH chart.
+- κ_int is constant, whereas in the experiment mutual interference grows with thrust; Leishman's textbook (PHA) was never accessed.
 
-## Пятая проверка физики: сверка с реальными измерениями (2026-11-12)
+## Fifth physics check: comparison with real measurements (2026-11-12)
 
 ```bash
-npm run physics -- --validate   # только сверки с измерениями, несколько минут
-npm run check                   # всё вместе: 286 проверок — 258 проходят, 28 «РАСХОЖДЕНИЕ», провалов нет; 23 строки справочно
+npm run physics -- --validate   # only the comparisons with measurements, a few minutes
+npm run check                   # everything together: 286 checks — 258 pass, 28 "DIVERGENCE", no failures; 23 lines INFO
 ```
 
-Правило этой проверки — слова пользователя: «тесты не должны подгоняться. Физику нужно проверять с реалистичностью
-максимальной». Прежние четыре прохода сверяли модель в основном с формулами. Здесь эталоны — измерения:
-продувки профилей, стендовые испытания винтов, таблицы руководств по лётной эксплуатации.
-Числа и адреса источников — в `data/research.md`, часть 4. Проверки — `src/cli/validation.ts`.
+The rule for this check is the user's own words: "tests must not be tuned to pass. Physics must be checked with maximum
+realism." The previous four passes compared the model mostly against formulas. Here the references are measurements:
+airfoil wind-tunnel tests, propeller and rotor test-stand data, tables from pilot's operating handbooks.
+Numbers and source links are in `data/research.md`, part 4. The checks are in `src/cli/validation.ts`.
 
-У проверок появилось два новых исхода (`src/cli/physics.ts`, `makeReporter`):
+The checks gained two new outcomes (`src/cli/physics.ts`, `makeReporter`):
 
-- **РАСХОЖДЕНИЕ** — модель не попала в измерение с допуском, обоснованным погрешностью эталона и известными
-  упрощениями модели. Печатается с причиной и считается отдельной строкой в итоге. Прогон не валит, но и не прячется.
-- **СПРАВОЧНО** — число печатается, но проверкой не считается. Сюда переведены сверки с эталоном, под который
-  подобран параметр модели, и сверки с величиной, которая эталоном не является.
+- **DIVERGENCE** — the model missed the measurement by more than a tolerance justified by the reference's uncertainty and the known
+  simplifications of the model. It is printed with the reason and counted on a separate line in the summary. It does not fail the run, but it is not hidden either.
+- **INFO** — the number is printed but does not count as a check. This covers comparisons with a reference that a model
+  parameter was tuned to, and comparisons with a quantity that is not a reference.
 
-Допуск каждой сверки расписан в коде: из чего он складывается и сколько даёт каждая часть. Ни один допуск
-не подбирался под результат. Где бюджет получился меньше расхождения, стоит «РАСХОЖДЕНИЕ», а не расширенный допуск.
+The tolerance of each comparison is broken down in the code: what it is made of and how much each part contributes. No tolerance
+was tuned to the result. Where the budget came out smaller than the discrepancy, the result is "DIVERGENCE", not a widened tolerance.
 
-### Что показали измерения
+### What the measurements showed
 
-| Что сверено | Эталон (измерение) | Модель | Итог |
+| What was compared | Reference (measurement) | Model | Result |
 | --- | --- | --- | --- |
-| NACA 0012 за срывом, нормальная сила при 30, 60, 90, 135° | две продувки: NACA TN 3361 (Re 1,8·10⁶) и SAND80-2114 (Re 0,36–0,7·10⁶) | в пределах 3–10 % | проходит |
-| то же при 45° | C_N 1,63 (среднее двух опытов) | 1,41 (−14 %) | **расхождение**: пластина Хёрнера за срывом занижает силу при 30–60° |
-| C_D задней кромкой вперёд (180°) | 0,014 ± 0,006 | 0,007 | **расхождение**, на силы почти не влияет |
-| Профили эталонов (Cessna NACA 2412, R22 NACA 63-015) | Report 824 при их числах Рейнольдса | между гладким и шероховатым профилем | проходит: входные числа не подобраны |
-| Cessna 172S: сваливание | POH рис. 5-3: 53 KCAS | 27,36 м/с (+0,4 %) | проходит (допуск 5 %) |
-| Cessna: мощность мотора с высотой | POH рис. 5-8: 77 % на 8000 ft, 72 % на 10 000 ft | 75,8 % и 70,4 % | проходит (3 %) |
-| Cessna: потребная мощность, 8 строк крейсерской таблицы на 2000, 8000 и 12 000 ft | POH рис. 5-8 | в среднем −6,5 % (от −4 до −9,3 %) | 6 строк проходят (допуск 8 %), 2 — **расхождение** на наибольших скоростях |
-| Cessna: наибольшая скорость у земли | 126 kt | +5,2 % | **расхождение** (допуск 4 %): то же, что крейсер, — модели нужно меньше мощности |
-| Cessna: скороподъёмность у земли и на 8000 ft | POH рис. 5-7: 730 и 410 fpm | 1085 и 657 fpm (+49 %, +60 %) | **расхождение**: винт фиксированного шага не моделируется |
-| Cessna: момент инерции по тангажу | 1480–1825 кг·м² (NASA TM-80163, JSBSim) | 3952 кг·м² | **расхождение** ×2,4: масса фюзеляжа размазана по эллипсоиду |
-| Винт без крутки, 2 и 4 лопасти (NACA TN 626, таблицы) | C_Q при той же C_T | от −4 до −11 % | 1 из 6 проходит, 5 — **расхождение** |
-| Полноразмерный винт с круткой −8° (NACA TN 4357) | C_Q при той же C_T | +2,5…+4,5 % | проходит (допуск 6 %) |
-| Одиночный винт Харрингтона (NACA TN 2318) | C_Q при той же C_T | 0…+7 % | 2 из 3 проходят |
-| Соосный винт Харрингтона | C_Q при той же C_T | −14…−26 % | **расхождение**: κ_int = 1,16 занижает мощность соосной пары (шестая проверка: верхний винт стенда был собран неправильно, с исправленным стендом и прежним 1,16 — −7…−14 %; теперь κ_int = 1,28, −4…−8 %) |
-| R22: шесть точек графика потолка висения OGE на постоянной взлётной мощности | POH стр. 5-10 | −8,7…−13 % | **расхождение**: R22 модели висит на 12 % меньшей мощности |
-| Ротор квадрокоптера при тяге веса Phantom 4 | замер NASA Ames на роторе DJI 9450 | +8,7 % | **расхождение** (допуск 8 %) |
-| КПД мотора с регулятором | тот же замер: 0,73 | 0,75 | проходит |
-| Винт APC 9x4.7 SF по измеренной геометрии | UIUC, статические испытания: FM 0,668 | 0,644 (−3,6 %) | проходит; C_T и C_P по отдельности на 20–26 % ниже (справочно) |
-| SmartBird: мощность на валах в горизонтальном полёте 4,7 м/с | 13 Вт (электрическая без сервоприводов) × КПД привода 0,34–0,45 = 4,4–5,9 Вт (Send et al., ICAS 2012) | 5,26 Вт (+2,4 % к середине) | проходит |
-| Snowbird: сопротивление в планировании 7,1 м/с | 54,0 Н — планирование и буксировка с динамометром (Reichert 2011, табл. 12.1) | 42,3 Н (−22 %) | **расхождение**: вредное сопротивление и c_d0 крыла — оценки, у авторов они больше |
-| Snowbird: тяга с опубликованной кинематикой (0,65 Гц, ±1,0 м, закрутка ±7°, машут панели от 6 м) | рекордный полёт: полная энергия постоянна за 19,3 с, т. е. тяга ≈ сопротивлению (с поправкой на влияние земли — 0,915 сопротивления в свободном воздухе) | тяга — треть сопротивления (0,33); с вихрем динамического срыва — 0,42 | **расхождение**: законцовка работает при ±23°, а модель срыва при малых Re занижает силу (см. «Седьмая проверка физики») |
+| NACA 0012 post-stall, normal force at 30, 60, 90, 135° | two wind-tunnel tests: NACA TN 3361 (Re 1.8·10⁶) and SAND80-2114 (Re 0.36–0.7·10⁶) | within 3–10 % | passes |
+| same at 45° | C_N 1.63 (mean of two tests) | 1.41 (−14 %) | **divergence**: the Hoerner flat plate post-stall underestimates the force at 30–60° |
+| C_D trailing edge first (180°) | 0.014 ± 0.006 | 0.007 | **divergence**, almost no effect on forces |
+| Reference airfoils (Cessna NACA 2412, R22 NACA 63-015) | Report 824 at their Reynolds numbers | between the smooth and the rough airfoil | passes: input numbers not tuned |
+| Cessna 172S: stall | POH fig. 5-3: 53 KCAS | 27.36 m/s (+0.4 %) | passes (tolerance 5 %) |
+| Cessna: engine power vs altitude | POH fig. 5-8: 77 % at 8000 ft, 72 % at 10,000 ft | 75.8 % and 70.4 % | passes (3 %) |
+| Cessna: power required, 8 rows of the cruise table at 2000, 8000 and 12,000 ft | POH fig. 5-8 | mean −6.5 % (from −4 to −9.3 %) | 6 rows pass (tolerance 8 %), 2 — **divergence** at the highest speeds |
+| Cessna: maximum speed at sea level | 126 kt | +5.2 % | **divergence** (tolerance 4 %): same as cruise — the model needs less power |
+| Cessna: rate of climb at sea level and at 8000 ft | POH fig. 5-7: 730 and 410 fpm | 1085 and 657 fpm (+49 %, +60 %) | **divergence**: fixed-pitch propeller not modelled |
+| Cessna: pitch moment of inertia | 1480–1825 kg·m² (NASA TM-80163, JSBSim) | 3952 kg·m² | **divergence** ×2.4: fuselage mass is smeared over an ellipsoid |
+| Untwisted rotor, 2 and 4 blades (NACA TN 626, tables) | C_Q at the same C_T | from −4 to −11 % | 1 of 6 passes, 5 — **divergence** |
+| Full-scale rotor with −8° twist (NACA TN 4357) | C_Q at the same C_T | +2.5…+4.5 % | passes (tolerance 6 %) |
+| Harrington single rotor (NACA TN 2318) | C_Q at the same C_T | 0…+7 % | 2 of 3 pass |
+| Harrington coaxial rotor | C_Q at the same C_T | −14…−26 % | **divergence**: κ_int = 1.16 underestimates the power of the coaxial pair (sixth check: the upper rotor of the test stand had been assembled incorrectly; with the corrected stand and the old 1.16 — −7…−14 %; now κ_int = 1.28, −4…−8 %) |
+| R22: six points of the OGE hover ceiling chart at constant takeoff power | POH p. 5-10 | −8.7…−13 % | **divergence**: the model R22 hovers on 12 % less power |
+| Quadcopter rotor at thrust equal to Phantom 4 weight | NASA Ames measurement on a DJI 9450 rotor | +8.7 % | **divergence** (tolerance 8 %) |
+| Motor efficiency with ESC | same measurement: 0.73 | 0.75 | passes |
+| APC 9x4.7 SF propeller from measured geometry | UIUC, static tests: FM 0.668 | 0.644 (−3.6 %) | passes; C_T and C_P individually 20–26 % lower (INFO) |
+| SmartBird: shaft power in level flight at 4.7 m/s | 13 W (electrical, excluding servos) × drive efficiency 0.34–0.45 = 4.4–5.9 W (Send et al., ICAS 2012) | 5.26 W (+2.4 % vs midpoint) | passes |
+| Snowbird: drag in gliding at 7.1 m/s | 54.0 N — gliding and towing with a dynamometer (Reichert 2011, table 12.1) | 42.3 N (−22 %) | **divergence**: parasite drag and wing c_d0 are estimates; the authors' values are higher |
+| Snowbird: thrust with the published kinematics (0.65 Hz, ±1.0 m, twist ±7°, flapping panels from 6 m) | record flight: total energy constant over 19.3 s, i.e. thrust ≈ drag (corrected for ground effect — 0.915 of free-air drag) | thrust is a third of drag (0.33); with the dynamic-stall vortex — 0.42 | **divergence**: the tip operates at ±23°, and the stall model at low Re underestimates the force (see "Seventh physics check") |
 
 
-### Что это значит для вердиктов
+### What this means for the verdicts
 
-- **Cessna.** Установившийся полёт модель описывает в пределах 4–9 % по мощности, сваливание — точно.
-  Набор высоты сильно завышен (+50–60 %): в модели воздушный винт — диск с постоянным КПД 0,85, а мотор
-  на полном газе отдаёт всю мощность при любой скорости. У настоящего винта фиксированного шага на малой скорости
-  обороты ниже 2700, а КПД около 0,6. Вердикты «Не взлетает» для перегруженного самолёта поэтому оптимистичны:
-  модель может пропустить самолёт, который на самом деле не наберёт высоту.
-- **Винты на висении.** Модель с κ = 1,15 правильно описывает винт с круткой (Carpenter, в пределах 5 %)
-  и одиночный винт Харрингтона. У винта без крутки и при малых числах Рейнольдса (TN 626) она занижает мощность
-  на 4–11 %. У настоящего R22 расхождение 12 %. Известные причины: нет роста сопротивления от сжимаемости
-  на конце лопасти (M 0,62–0,65; у винта Carpenter при M 0,7 FM на 10 % ниже, чем при M 0,3), нет нагрузки
-  от струи на кабине (2–5 % тяги), доля хвостового винта и трансмиссии 15 % — оценка. Модель R22 висит там,
-  где настоящий уже не может: по потолку висения она оптимистична примерно на 2000–2500 ft.
-- **Соосные винты** (устарело — см. шестую проверку: κ_int = 1,28, а стенд соосного винта был собран с ошибкой).
-  κ_int = 1,16 взят с форума, первоисточник не прочитан. Опыт Харрингтона даёт, что соосная пара
-  берёт в 1,22–1,37 раза больше мощности, чем два отдельных винта с половинной тягой, а модель — около 1,12.
-  Мощность висения Ка-26 и Ка-32 в модели, вероятно, занижена на 10–20 %. Значение 1,16 не изменено: надёжного
-  числа взамен нет (у Харрингтона разложение на профильную и индуктивную части неустойчиво, ротор 1 — деревянный,
-  с очень малой заполненностью). Нужна сверка со вторым ротором Харрингтона и с первоисточником.
-- **За срывом** (орнитоптер «Дюны», лопасти при обратном обтекании) модель занижает аэродинамические силы
-  при 30–60° на 10–20 %.
-- **Махолёты.** SmartBird по мощности на валу модель описывает в пределах точности статьи. Snowbird с настоящей
-  кинематикой модель в воздухе не держит: тяга втрое меньше сопротивления, а сопротивление в планировании на 22 %
-  меньше измеренного. У настоящего крыла законцовка работает на ±20–23° — в режиме динамического срыва, где подъёмная
-  сила держится за счёт срывного вихря у передней кромки. В модели этого вихря не было; теперь он есть, но расхождение осталось (см. «Седьмая проверка физики»). Вердикт для крупных медленных
-  махолётов («Не взлетает») поэтому пессимистичен.
+- **Cessna.** The model describes steady flight within 4–9 % in power, and stall accurately.
+  Climb is strongly overestimated (+50–60 %): in the model the propeller is a disc with a constant efficiency of 0.85, and the engine
+  at full throttle delivers full power at any speed. A real fixed-pitch propeller at low speed turns
+  below 2700 rpm, with an efficiency of about 0.6. The "Does not fly" verdicts for an overloaded aircraft are therefore optimistic:
+  the model may pass an aircraft that in reality will not climb.
+- **Rotors in hover.** The model with κ = 1.15 correctly describes a twisted rotor (Carpenter, within 5 %)
+  and the Harrington single rotor. For an untwisted rotor and at low Reynolds numbers (TN 626) it underestimates power
+  by 4–11 %. For the real R22 the discrepancy is 12 %. Known causes: no compressibility drag rise
+  at the blade tip (M 0.62–0.65; for the Carpenter rotor at M 0.7 FM is 10 % lower than at M 0.3), no download
+  from the wake on the cabin (2–5 % of thrust), the tail rotor and transmission share of 15 % is an estimate. The model R22 hovers
+  where the real one no longer can: its hover ceiling is optimistic by roughly 2000–2500 ft.
+- **Coaxial rotors** (outdated — see the sixth check: κ_int = 1.28, and the coaxial rotor test stand had been assembled with an error).
+  κ_int = 1.16 was taken from a forum; the primary source was not read. Harrington's experiment shows that a coaxial pair
+  takes 1.22–1.37 times more power than two separate rotors at half thrust each, while the model gives about 1.12.
+  The hover power of the Ka-26 and Ka-32 in the model is probably underestimated by 10–20 %. The value 1.16 was not changed: there is no reliable
+  number to replace it (in Harrington's data the split into profile and induced parts is unstable, rotor 1 is wooden,
+  with very low solidity). A comparison with Harrington's second rotor and with the primary source is needed.
+- **Post-stall** (the "Dune" ornithopter, blades in reverse flow) the model underestimates aerodynamic forces
+  at 30–60° by 10–20 %.
+- **Flapping-wing aircraft.** The model describes SmartBird's shaft power within the accuracy of the paper. Snowbird with the real
+  kinematics does not stay airborne in the model: thrust is a third of drag, and gliding drag is 22 %
+  less than measured. On the real wing the tip operates at ±20–23° — in the dynamic-stall regime, where lift
+  is sustained by the leading-edge stall vortex. The model did not have this vortex; it does now, but the discrepancy remains (see "Seventh physics check"). The verdict for large slow
+  flapping-wing aircraft ("Does not fly") is therefore pessimistic.
 
-### Найдено и исправлено
+### Found and fixed
 
-1. **Крейсерская мощность снималась до установления режима** (`programs.ts`, программа полёта). Мощность усреднялась
-   на 22–30 с после выхода с наибольшей скорости. Регулятор скорости (0,08 на м/с) к этому времени ещё раскачивался
-   с периодом около 40 с. На 112 узлах на 8000 ft получалось 78 кВт при установившихся 76, а на соседних скоростях
-   кривая шла скачками. Теперь регулятор на крейсере задемпфирован (0,25 на м/с), и мощность снимается, только когда
-   16 с подряд скорость держится в пределах 0,2 м/с, высота не меняется и газ не гуляет. Не установилось за 200 с —
-   так и пишется в отчёте. Прежняя сверка на 124 узлах: было 96,3 кВт, стало 93,7 кВт.
-2. **Новый режим программы полёта** — установившийся набор на заданной скорости на полном газе (`climbSpeed`):
-   скороподъёмность. Нужен для сверки с POH.
-3. **Регулятор высоты программы «Взлёт и висение» раскачивался на малой плотности.** У R22 на 1524 м высота гуляла
-   на ±3 м с периодом около 9 с, висение не засчитывалось, средняя мощность была смещена. На этом стояла прежняя
-   сверка «R22 на 5000 ft» (85,3 кВт). Внутренний контур (шаг → ускорение) на малой плотности медленнее, а внешний
-   был слишком жёстким. Коэффициенты по высоте и скорости 1,0 и 1,8 заменены на 0,4 и 1,2. Раскачка у R22: у земли
-   1,2 → 0,55 м, на 1524 м 6,2 → 1,9 м (висение засчитано), на 3000 м 3,5 → 1,7 м; у квадрокоптера и Ка-26 не хуже прежнего.
-   Для сверок с POH висение всё равно считается на закреплённом корпусе, с подбором общего шага под тягу, равную весу.
-4. **Эталоны махолётов переведены с подобранных чисел на опубликованные** (`src/presets/flappers.ts`):
-   - Snowbird: частота 0,83 → 0,65 Гц (диссертация, «наблюдалось в полёте»; 0,83 было пересказом «16 взмахов за 19,3 с»);
-     размах взмаха — по ходу законцовки ±1,0 м вместо подобранных ±4°; закрутка ±45° → ±7° (предел конструкции);
-     машут только панели от 6 м, внутренняя часть неподвижна — как у настоящего аппарата (растяжки на 6 м);
-     массы — по таблице масс диссертации (крыло 27,6 кг); c_l,max 1,5 → 1,55 (профиль DT-HPO1 при ранней турбулизации).
-   - SmartBird: КПД привода 0,6 (оценка) → 0,34 (замер в той же статье).
-   **Вердикт Snowbird изменился: «Летает на пределе» → «Не взлетает»** (тяга — треть сопротивления).
-   Это не ошибка ввода: модель с настоящей кинематикой не воспроизводит настоящий полёт, и прежний вердикт держался
-   на подобранных размахе и закрутке. SmartBird по-прежнему «Летает»; электрическая мощность при 5 м/с 15,7 Вт
-   (по статье на расчётном режиме 23 Вт, из них около 5 Вт — сервоприводы).
+1. **Cruise power was taken before the flight condition had settled** (`programs.ts`, flight program). Power was averaged
+   over 22–30 s after leaving the maximum speed. The speed controller (0.08 per m/s) was still oscillating by then,
+   with a period of about 40 s. At 112 knots at 8000 ft it gave 78 kW instead of the steady-state 76, and at neighbouring speeds
+   the curve jumped. Now the cruise controller is damped (0.25 per m/s), and power is taken only when
+   for 16 s in a row the speed stays within 0.2 m/s, altitude does not change and throttle does not wander. If it has not settled within 200 s,
+   the report says so. The old comparison at 124 knots: was 96.3 kW, now 93.7 kW.
+2. **New flight program mode** — steady climb at a given speed at full throttle (`climbSpeed`):
+   rate of climb. Needed for the comparison with the POH.
+3. **The altitude controller of the "Takeoff and hover" program oscillated at low density.** For the R22 at 1524 m altitude wandered
+   by ±3 m with a period of about 9 s, the hover was not counted, and the mean power was biased. The old
+   "R22 at 5000 ft" comparison (85.3 kW) relied on this. The inner loop (collective → acceleration) is slower at low density, and the outer one
+   was too stiff. The altitude and speed gains of 1.0 and 1.8 were replaced with 0.4 and 1.2. Oscillation for the R22: at sea level
+   1.2 → 0.55 m, at 1524 m 6.2 → 1.9 m (hover counted), at 3000 m 3.5 → 1.7 m; for the quadcopter and Ka-26 no worse than before.
+   For comparisons with the POH, hover is still computed on a fixed body, with the collective pitch trimmed for thrust equal to weight.
+4. **Flapping-wing references switched from tuned numbers to published ones** (`src/presets/flappers.ts`):
+   - Snowbird: frequency 0.83 → 0.65 Hz (dissertation, "observed in flight"; 0.83 was a paraphrase of "16 flaps in 19.3 s");
+     flap amplitude — by tip travel ±1.0 m instead of the tuned ±4°; twist ±45° → ±7° (structural limit);
+     only the panels from 6 m flap, the inner part is fixed — as on the real aircraft (bracing wires at 6 m);
+     masses — from the dissertation's mass table (wing 27.6 kg); c_l,max 1.5 → 1.55 (DT-HPO1 airfoil with early transition).
+   - SmartBird: drive efficiency 0.6 (estimate) → 0.34 (measured in the same paper).
+   **The Snowbird verdict changed: "Flies at the limit" → "Does not fly"** (thrust is a third of drag).
+   This is not an input error: the model with the real kinematics does not reproduce the real flight, and the old verdict relied
+   on tuned amplitude and twist. SmartBird still "Flies"; electrical power at 5 m/s is 15.7 W
+   (per the paper, 23 W at the design condition, of which about 5 W are servos).
 
-### Разбор прежних проверок на подгонку
+### Review of the earlier checks for tuning
 
-Каждая проверка `npm run check` разобрана: с чем сверяет, откуда эталон, независим ли он от параметров модели,
-чем обоснован допуск. Проверки, не связанные с физикой (интерфейс, сервис, генерация, картинки, ссылки), в таблицу
-не вошли: в них эталон — требование ТЗ, а не измерение.
+Each `npm run check` check was reviewed: what it compares against, where the reference comes from, whether it is independent of the model parameters,
+what justifies the tolerance. Checks not related to physics (interface, service, generation, images, links) are not
+in the table: their reference is a requirement of the specification, not a measurement.
 
-**Сверки с эталонами-аппаратами (было до этой проверки):**
+**Comparisons with reference aircraft (existed before this check):**
 
-| Проверка | Эталон | Откуда | Независим? | Допуск был | Что сделано |
+| Check | Reference | Source | Independent? | Tolerance was | What was done |
 | --- | --- | --- | --- | --- | --- |
-| Cessna: сваливание | V_A/√3,8 = 52,3 KCAS | TCDS, вывод из маневренной скорости | да, но не таблица сваливания | 20 % (ТЗ) | заменено таблицей POH 53 KCAS, допуск 5 % по бюджету |
-| Cessna: наибольшая скорость | 126 kt | спецификация POH | да; сопротивление 0,36 м² — оценка, под эталон не подбиралось (видно по крейсерской таблице) | 20 % | допуск 4 % → **расхождение 5,2 %** |
-| Cessna: крейсер 75 % на 8500 ft | 124 kt | спецификация POH | да | 20 % | заменено восемью строками крейсерской таблицы, допуск 8 % |
-| Cessna: манёвр, запас ≥ 1,5 | — | — | **нет**: сечение лонжерона подобрано под запас 5,7 при 1 g | — | помечено «зависимая» |
-| R22: мощность на потолке 5000 ft | 131 л. с. | Robinson: «HOGE 5000 ft» | да | 20 % | заменено шестью точками графика POH, допуск 5 %; прежний замер был смещён раскачкой регулятора (п. 3 выше), стал «справочно» |
-| R22: конусность 2° | — | — | подобрана под равновесие изгиба на висении | — | физически верно: у настоящего R22 шарниры конусности, лопасть сама встаёт так |
-| Квадрокоптер: 174 Вт | 81,3 Вт·ч за 28 мин | паспорт DJI | **не эталон висения**: средняя мощность за полёт, а не висение, и заряд не расходуется до нуля | 20 % | «справочно»; вместо неё — ротор против замера NASA на винте 9450 |
-| Квадрокоптер: c_d0 лопасти | — | — | его поднимали до 0,03 под эталон, потом вернули 0,02 | — | 0,02 оставлено; сверка с замером NASA показывает +8,7 % |
-| SmartBird: мощность 13 Вт | 18 Вт минус сервоприводы | Send et al., ICAS 2012 | проходила с КПД привода 0,6 — оценкой; в той же статье измерено 0,34 | 40 % (ТЗ) | КПД привода взят из статьи; сверка перенесена на валы (13 Вт × 0,34–0,45), допуск — разброс КПД в статье (14 %); электрическая — справочно |
-| SmartBird: держит вес и тягу | качество L/D ≈ 7 | та же статья | частично: сопротивление подобрано под L/D ≈ 7 из той же статьи | — | помечено |
-| Snowbird: мощность на рабочем ходе | 600–700 Вт | оценка пилота | **нет**: размах взмаха подобран под эту оценку | 40 % | кинематика взята из диссертации; мощность — справочно (измерений мощности в полёте нет, 620–680 Вт у авторов — расчёт) |
-| Snowbird: 16 взмахов за 19,3 с | рекордный полёт | Википедия | **нет**: частота 0,83 Гц задана как 16/19,3 (и сама неверна: по диссертации 0,65 Гц) | — | снята; частота — из диссертации |
-| Snowbird: вердикт «на пределе» | полёт с падающей энергией | Chronister, Flapping Wings | **нет**: размах подобран, закрутка ±45° «с запасом», порог «на пределе» (20 % сопротивления) задан с оглядкой на эталоны | — | с опубликованной кинематикой вердикт модели — **«Не взлетает»**; сверка с настоящим полётом — расхождение (см. выше) |
-| Ка-26: мощность против ручной оценки | импульсная теория × 1,15 × 1,16 | те же формулы и числа, что в модели | **верификация**, не сверка с реальностью | 10 % | переименовано |
-| Ка-26: взаимное влияние 8–13 % | κ_int = 1,16 | форум | верификация того, что κ_int применён | — | переименовано; сам κ_int сверен с Харрингтоном — расхождение |
-| Ка-26: «Летает» | — | — | **по прочности нет**: стенка 9 мм подобрана под запас 1,9 | — | помечено |
-| Проект Cessna: сваливание | V_A/√3,8 | TCDS | да | 20 % | POH 53 KCAS, допуск 5 % |
+| Cessna: stall | V_A/√3.8 = 52.3 KCAS | TCDS, derived from maneuvering speed | yes, but not the stall table | 20 % (spec) | replaced with the POH table 53 KCAS, tolerance 5 % by budget |
+| Cessna: maximum speed | 126 kt | POH specification | yes; drag area 0.36 m² is an estimate, not tuned to the reference (visible in the cruise table) | 20 % | tolerance 4 % → **divergence 5.2 %** |
+| Cessna: cruise 75 % at 8500 ft | 124 kt | POH specification | yes | 20 % | replaced with eight rows of the cruise table, tolerance 8 % |
+| Cessna: maneuver, margin ≥ 1.5 | — | — | **no**: spar cross-section tuned to a margin of 5.7 at 1 g | — | marked "dependent" |
+| R22: power at the 5000 ft ceiling | 131 hp | Robinson: "HOGE 5000 ft" | yes | 20 % | replaced with six points of the POH chart, tolerance 5 %; the old measurement was biased by controller oscillation (item 3 above), became INFO |
+| R22: coning 2° | — | — | tuned for bending equilibrium in hover | — | physically correct: the real R22 has coning hinges, the blade settles there by itself |
+| Quadcopter: 174 W | 81.3 Wh over 28 min | DJI spec sheet | **not a hover reference**: mean power over a flight, not hover, and the battery is not drained to zero | 20 % | INFO; replaced by the rotor against the NASA measurement on the 9450 propeller |
+| Quadcopter: blade c_d0 | — | — | it was raised to 0.03 to match the reference, then returned to 0.02 | — | 0.02 kept; the comparison with the NASA measurement shows +8.7 % |
+| SmartBird: power 13 W | 18 W minus servos | Send et al., ICAS 2012 | passed with a drive efficiency of 0.6 — an estimate; the same paper measured 0.34 | 40 % (spec) | drive efficiency taken from the paper; comparison moved to the shafts (13 W × 0.34–0.45), tolerance — the efficiency spread in the paper (14 %); electrical — INFO |
+| SmartBird: supports weight and thrust | L/D ≈ 7 | same paper | partly: drag tuned to L/D ≈ 7 from the same paper | — | marked |
+| Snowbird: power on the power stroke | 600–700 W | pilot's estimate | **no**: flap amplitude tuned to this estimate | 40 % | kinematics taken from the dissertation; power — INFO (there are no in-flight power measurements; the authors' 620–680 W is a calculation) |
+| Snowbird: 16 flaps in 19.3 s | record flight | Wikipedia | **no**: frequency 0.83 Hz set as 16/19.3 (and itself wrong: per the dissertation 0.65 Hz) | — | removed; frequency from the dissertation |
+| Snowbird: verdict "at the limit" | flight with decreasing energy | Chronister, Flapping Wings | **no**: amplitude tuned, twist ±45° "with margin", the "at the limit" threshold (20 % of drag) set with an eye on the references | — | with the published kinematics the model's verdict is **"Does not fly"**; comparison with the real flight — divergence (see above) |
+| Ka-26: power vs hand estimate | momentum theory × 1.15 × 1.16 | the same formulas and numbers as in the model | **verification**, not a comparison with reality | 10 % | renamed |
+| Ka-26: interference 8–13 % | κ_int = 1.16 | forum | verification that κ_int is applied | — | renamed; κ_int itself compared with Harrington — divergence |
+| Ka-26: "Flies" | — | — | **not for strength**: 9 mm wall tuned to a margin of 1.9 | — | marked |
+| Cessna project: stall | V_A/√3.8 | TCDS | yes | 20 % | POH 53 KCAS, tolerance 5 % |
 
-**Проверки по формулам** (`src/cli/physics.ts`: общие законы, прочность, нестационарность, четвёртая проверка;
-в `check.ts` — инерция взмаха, несущая линия, винт на висении, балка) — это верификация: код считает то, что
-написано в формуле. Эталон независим от модели (формула или закон сохранения), допуски — численная погрешность
-счёта (шаг, одинарная точность движка, недобор привода) или округление, а не «чтобы прошло». Особые случаи:
+**Formula checks** (`src/cli/physics.ts`: general laws, strength, unsteady aerodynamics, the fourth check;
+in `check.ts` — flapping inertia, lifting line, rotor in hover, beam) are verification: the code computes what
+is written in the formula. The reference is independent of the model (a formula or a conservation law), the tolerances are the numerical error
+of the computation (time step, the engine's single precision, actuator shortfall) or rounding, not "so that it passes". Special cases:
 
-| Группа | Эталон | Независим? | Допуск |
+| Group | Reference | Independent? | Tolerance |
 | --- | --- | --- | --- |
-| Падение, маятник, импульс, момент импульса, центробежная сила | законы механики | да | 2–3 %: шаг и одинарная точность движка |
-| Несущая линия, винт на висении (импульсная теория + профиль) | формула с теми же постоянными (0,9·πAR, κ = 1,15), что в модели | верификация реализации; сами постоянные сверены теперь с опытами | 2 % |
-| Сопромат, выпучивание, усталость, атмосфера | формулы и таблицы МСА | да | до округления |
-| Вагнер, Теодорсен — Гаррик | теория | да | 1–5 %: дискретизация |
-| Запаздывание срыва: «на 10 % выше статического», «на 3° позже» | качественно | направление верное (динамический срыв), сами числа — не измерения | порог условный, помечено в README раздела |
-| Сходимость по шагу | модель с вдвое меньшим шагом | сравнение модели с собой — по смыслу (сходимость), это не сверка с реальностью | 2–5 % |
-| Отрицательные примеры (Cessna ×2 массы, деревянные лопасти, орнитоптер «Дюны») | качественно | да | — |
-| SmartBird и проекты «птиц»: удерживает высоту и скорость, свободный полёт = труба | качество автопилота и согласованность программ | не сверка с реальностью | условные пороги (0,1 м, 5 %, 15 %) |
+| Free fall, pendulum, momentum, angular momentum, centrifugal force | laws of mechanics | yes | 2–3 %: time step and the engine's single precision |
+| Lifting line, rotor in hover (momentum theory + profile) | formula with the same constants (0.9·πAR, κ = 1.15) as in the model | verification of the implementation; the constants themselves are now compared with experiments | 2 % |
+| Strength of materials, buckling, fatigue, atmosphere | formulas and ISA tables | yes | up to rounding |
+| Wagner, Theodorsen — Garrick | theory | yes | 1–5 %: discretization |
+| Stall delay: "10 % above static", "3° later" | qualitative | the direction is right (dynamic stall), the numbers themselves are not measurements | threshold is arbitrary, marked in the section README |
+| Time-step convergence | model with half the time step | comparing the model with itself — by intent (convergence), this is not a comparison with reality | 2–5 % |
+| Negative examples (Cessna ×2 mass, wooden blades, "Dune" ornithopter) | qualitative | yes | — |
+| SmartBird and "bird" projects: holds altitude and speed, free flight = tunnel | autopilot quality and consistency of programs | not a comparison with reality | arbitrary thresholds (0.1 m, 5 %, 15 %) |
 
-### Что осталось
+### What remains
 
-- ~~**Винт фиксированного шага.**~~ — сделано, см. «Винт фиксированного шага Cessna 172S»: набор +49…+60 % → +17…+18 %.
-  Было: самая большая найденная неточность — набор высоты Cessna. Для McCauley 1A170E/JHA7660 геометрия лопасти
-  не опубликована — в модели оценки.
-- ~~**Рост сопротивления от сжимаемости** на концах лопастей~~ — сделано в шестой проверке. По измерениям это
-  не главная часть расхождения R22 (около 1 %).
-- ~~**κ_int соосных винтов**~~ — сделано в шестой проверке: 1,28, сверено с обоими роторами Харрингтона.
-- ~~**Вихрь динамического срыва**~~ — сделано, см. «Седьмая проверка физики». Было: (Беддоуз — Лейшман целиком или модель срывного вихря у передней кромки) — без него
-  Snowbird не летит. Сверять с продувками динамического срыва NACA 0012 (McAlister et al., NASA TM 84245).
-- У R22 на 4000 м висение не засчитывается (мощность у предела, регулятор раскачивается ±1,7 м).
-- **Инерция Cessna**: массу фюзеляжа разложить на мотор, кабину и хвост.
-- Ка-26: в открытых данных расходятся потолки (OGE 800 м по Jane's в пересказе Википедии, 640 м в другом справочнике),
-  хорды и оборотов винта нет — сверка не сделана.
-- Не найдено: измеренная мощность Phantom 4 на висении, геометрия DJI 9450, измеренный КПД винта Cessna,
-  таблицы измерений NACA 0012 на полном круге (есть только графики).
+- ~~**Fixed-pitch propeller.**~~ — done, see "Cessna 172S fixed-pitch propeller": climb +49…+60 % → +17…+18 %.
+  Was: the largest inaccuracy found — the Cessna's climb. For the McCauley 1A170E/JHA7660 the blade geometry
+  is not published — the model uses estimates.
+- ~~**Compressibility drag rise** at the blade tips~~ — done in the sixth check. According to the measurements it is
+  not the main part of the R22 discrepancy (about 1 %).
+- ~~**κ_int of coaxial rotors**~~ — done in the sixth check: 1.28, compared with both Harrington rotors.
+- ~~**Dynamic-stall vortex**~~ — done, see "Seventh physics check". Was: (full Beddoes — Leishman or a leading-edge stall vortex model) — without it
+  Snowbird does not fly. Compare with NACA 0012 dynamic-stall wind-tunnel tests (McAlister et al., NASA TM 84245).
+- For the R22 at 4000 m the hover is not counted (power at the limit, the controller oscillates ±1.7 m).
+- **Cessna inertia**: split the fuselage mass into engine, cabin and tail.
+- Ka-26: open data disagree on the ceilings (OGE 800 m per Jane's as retold by Wikipedia, 640 m in another reference book),
+  and there is no rotor chord or rpm — the comparison has not been made.
+- Not found: measured hover power of the Phantom 4, DJI 9450 geometry, measured Cessna propeller efficiency,
+  NACA 0012 measurement tables over the full 360° range (only charts are available).
 
-## Четвёртая проверка физики: независимая (2026-11-12)
+## Fourth physics review: independent (2026-11-12)
 
 ```bash
-npm run physics -- --audit   # только проверки этого раздела, около 30 с
-npm run check                # всё вместе (на момент четвёртой проверки — 236 проверок)
+npm run physics -- --audit   # only this section's checks, about 30 s
+npm run check                # everything together (236 checks as of the fourth review)
 ```
 
-Ядро прочитано заново и сверено слой за слоем с формулами и данными, которые от программы не зависят.
-Прежние проверки на слово не принимались: искалось то, чего они не ловят. Новые проверки — функция
-`auditChecks` в `src/cli/physics.ts` (32 проверки) и пять проверок в `src/cli/check.ts`.
+The core was read anew and compared layer by layer against formulas and data that do not depend on the program.
+Earlier checks were not taken on trust: the search was for what they do not catch. The new checks are the
+`auditChecks` function in `src/cli/physics.ts` (32 checks) and five checks in `src/cli/check.ts`.
 
-### Найдено и исправлено
+### Found and fixed
 
-| # | Ошибка | Модель была | Должно быть | Где |
+| # | Error | Model gave | Should be | Where |
 | --- | --- | --- | --- | --- |
-| 1 | Нагрузки у наклонной балки (конусность лопасти, поперечное V крыла) раскладывались по осям детали, а не по оси балки | крыло с V 30°, вес 98,1 Н: срез 98,1 Н, продольная сила 0 | срез W·cos Γ = 84,96 Н, сжатие W·sin Γ = 49,05 Н | `sim.ts`: `beamAxes` |
-| 2 | Rapier 0.14 складывает инерцию деталей одного тела с неверным знаком: m·(\|d\|²E + ddᵀ) вместо m·(\|d\|²E − ddᵀ) | две массы по 1 кг на ±1 м: I вокруг их оси 4,0 кг·м²; Cessna по тангажу 6 725 кг·м² | 0,0 кг·м²; Cessna 3 952 кг·м² | `sim.ts`: `setBodyMass` |
-| 3 | Сила на элементе бралась в начале шага, а её плечо — в середине (лопасть за шаг поворачивается на 5–7°). Видно стало после п. 1: у лопасти с конусностью есть радиальная составляющая L·sin β | конусность 4° меняла мощность винта на 5,4 % | на величину порядка β² (0,5 %) | `sim.ts`: `dFm` |
-| 4 | Срез стенки коробки — среднее V/(2ht) вместо наибольшего на нейтральной оси | плоская коробка лопасти Ка-32: в 1,163 раза меньше | τ = V·S/(I·2t) (Журавский) | `strength.ts` |
-| 5 | В упругом отклике не было воздуха: ни демпфирования взмаха, ни присоединённой массы | демпфирование лопасти R22 0,03, усиление у резонанса ×4,5 | ζ = 0,226 против γ/(16ν) = 0,221 по числу Лока; ×2,0 | `sim.ts`: `elasticInfo` |
-| 6 | Изгиб в плоскости вращения шёл через частоту и демпфирование формы взмаха | у плоской коробки жёсткость в плоскости в ~10 раз выше | своя форма: EI_lag, Саутвелл K − 1 | `sim.ts`: `measure` |
-| 7 | Вибрация в кресле — по модулю ускорения \|a − g\|: продольная и боковая тряска видны лишь во втором порядке | тряска 2 м/с² вдоль корпуса на 5 Гц: 0,05 м/с² | 1,10 м/с² (полоса 2–16 Гц) | `crew.ts`: `VibrationMeter` |
-| 8 | Отрицательный срыв −0,8·C_L,max + 2·C_L0 нарушал симметрию: у симметричного профиля (оперение Cessna, лопасти R22) срыв наступал на 20 % раньше | C_L(−α) ≠ −C_L(α), разница до 0,53 | C_L,min = 2·C_L0 − C_L,max: точно для симметричного профиля и по теории тонкого профиля для параболической средней линии | `aero.ts` |
-| 9 | Атмосфера выше 11 км: плотность замирала | 15 км: 0,364 кг/м³; 20 км — вчетверо больше настоящей | МСА: 0,1937 и 0,0880 кг/м³ | `aero.ts`: `atmosphere` |
-| 10 | Свободный полёт махолёта: наклон и курс удерживались молча | — | момент удержания меряется по изменению момента импульса системы и называется в вердикте и отчёте | `sim.ts`: `holdTorque`, `programs.ts` |
+| 1 | Loads on an inclined beam (blade coning, wing dihedral) were resolved along the part's axes instead of the beam's axis | wing with 30° dihedral, weight 98.1 N: shear 98.1 N, axial force 0 | shear W·cos Γ = 84.96 N, compression W·sin Γ = 49.05 N | `sim.ts`: `beamAxes` |
+| 2 | Rapier 0.14 sums the inertia of the parts of one body with the wrong sign: m·(\|d\|²E + ddᵀ) instead of m·(\|d\|²E − ddᵀ) | two 1 kg masses at ±1 m: I about their axis 4.0 kg·m²; Cessna in pitch 6,725 kg·m² | 0.0 kg·m²; Cessna 3,952 kg·m² | `sim.ts`: `setBodyMass` |
+| 3 | The force on an element was taken at the start of the step, and its moment arm at the middle (the blade turns 5–7° per step). It became visible after item 1: a coned blade has a radial component L·sin β | 4° coning changed rotor power by 5.4 % | by an amount of order β² (0.5 %) | `sim.ts`: `dFm` |
+| 4 | Box web shear was the mean V/(2ht) instead of the maximum at the neutral axis | flat Ka-32 blade box: 1.163 times too low | τ = V·S/(I·2t) (Zhuravskii) | `strength.ts` |
+| 5 | The elastic response had no air: neither flap damping nor added mass | R22 blade damping 0.03, gain near resonance ×4.5 | ζ = 0.226 vs γ/(16ν) = 0.221 from the Lock number; ×2.0 | `sim.ts`: `elasticInfo` |
+| 6 | In-plane (lead-lag) bending used the frequency and damping of the flap mode | a flat box is ~10 times stiffer in-plane | its own mode: EI_lag, Southwell K − 1 | `sim.ts`: `measure` |
+| 7 | Seat vibration used the magnitude of acceleration \|a − g\|: longitudinal and lateral shaking showed up only at second order | 2 m/s² shaking along the fuselage at 5 Hz: 0.05 m/s² | 1.10 m/s² (2–16 Hz band) | `crew.ts`: `VibrationMeter` |
+| 8 | Negative stall −0.8·C_L,max + 2·C_L0 broke symmetry: on a symmetric airfoil (Cessna tail, R22 blades) stall came 20 % early | C_L(−α) ≠ −C_L(α), difference up to 0.53 | C_L,min = 2·C_L0 − C_L,max: exact for a symmetric airfoil and per thin-airfoil theory for a parabolic camber line | `aero.ts` |
+| 9 | Atmosphere above 11 km: density froze | 15 km: 0.364 kg/m³; at 20 km four times the real value | ISA: 0.1937 and 0.0880 kg/m³ | `aero.ts`: `atmosphere` |
+| 10 | Ornithopter free flight: attitude and heading were held silently | — | the holding moment is measured from the change in the system's angular momentum and is stated in the verdict and the report | `sim.ts`: `holdTorque`, `programs.ts` |
 
-Мелочь: у мультикоптера сборщик считал C_T на все винты сразу (`design.ts`); на результат не влияло —
-это значение у мультикоптеров не используется.
+Minor: for a multicopter the builder computed C_T for all rotors at once (`design.ts`); it did not affect the result —
+this value is not used for multicopters.
 
-Пояснения:
+Notes:
 
-- **п. 1 и Ка-32.** Ложное «Разрушается» у Ка-32 из `data/gen-live/ka32.json` давала не однонаправленная стенка,
-  а п. 1. При конусности 3,8° центробежная сила лопасти 297 кН должна разгружать срез от тяги (18 кН),
-  а модель отдавала стенке всю тягу. Отсюда касательное 37,5 МПа при прочности 40 МПа. Стало 2,9 МПа.
-  Модель слоистой стенки ±45° для этого вердикта не понадобилась. Стенки по-прежнему однонаправленные,
-  и оценка среза и выпучивания для них — с запасом.
-- **п. 2.** Ошибка в самом движке, видна на любом теле из нескольких коллайдеров. Теперь масса,
-  центр масс и тензор инерции тела складываются в стенде (теорема Штейнера, главные оси — методом Якоби)
-  и передаются в Rapier готовыми; у тела из одной детали складывать нечего — масса у её коллайдера, как раньше.
-  Махолёты не затронуты: у них каждое тело — одна деталь.
-- **п. 5.** Демпфирование — по полосам, с формой первого тона консоли: ½·ρ·a·c·U·F(k) на метр размаха,
-  U = Ω·r у лопасти и скорость потока у крыла, F(k) — функция Теодорсена. Присоединённая масса ρπc²/4
-  понижает первую частоту лёгкого крыла: у SmartBird 52,7 → 37,1 Гц. Предупреждение «близко к резонансу»
-  теперь выносится, только если усиление не меньше 1,5. У соосных Ка-26 и Ка-32 ζ ≈ 0,45 и усиление ×1,1–1,2:
-  предупреждения нет. У R22 ζ = 0,26 и ×2,0: предупреждение осталось. Для настоящей шарнирной лопасти
-  (ν = 1, γ/16 ≈ 0,25) это то же самое.
-- **п. 10.** SmartBird: средний момент 0,005 Н·м (коэффициент момента 0,003) — малое оперение его даст;
-  переменный ±0,29 Н·м с частотой взмахов — без удержания корпус качался бы примерно на ±14°.
-  Snowbird: −8,3 Н·м (−0,01) и ±116 Н·м, около ±5°. Вердикт это не меняет (оперение не моделируется),
-  но называет. Проверено, что так измеренный момент совпадает с моментом на шарнире по Ньютону — Эйлеру
-  (расхождение 0,034 из 147 Н·м).
+- **Item 1 and the Ka-32.** The false "Breaks up" for the Ka-32 from `data/gen-live/ka32.json` was caused not by the unidirectional web
+  but by item 1. At 3.8° coning the blade's 297 kN centrifugal force should relieve the shear from thrust (18 kN),
+  but the model put the entire thrust into the web. Hence a shear stress of 37.5 MPa against a strength of 40 MPa. Now 2.9 MPa.
+  A ±45° laminate web model was not needed for this verdict. The webs are still unidirectional,
+  and the shear and buckling estimate for them is conservative.
+- **Item 2.** The error is in the engine itself and shows on any body made of several colliders. Now the body's mass,
+  centre of mass and inertia tensor are summed in the stand (parallel axis theorem, principal axes by the Jacobi method)
+  and passed to Rapier ready-made; a single-part body has nothing to sum — the mass sits on its collider, as before.
+  Ornithopters are unaffected: each of their bodies is a single part.
+- **Item 5.** Damping is by strips, with the cantilever's first mode shape: ½·ρ·a·c·U·F(k) per metre of span,
+  U = Ω·r for a blade and the flow speed for a wing, F(k) is the Theodorsen function. The added mass ρπc²/4
+  lowers the first frequency of a light wing: for SmartBird 52.7 → 37.1 Hz. The "close to resonance" warning
+  is now issued only if the gain is at least 1.5. The coaxial Ka-26 and Ka-32 have ζ ≈ 0.45 and gain ×1.1–1.2:
+  no warning. The R22 has ζ = 0.26 and ×2.0: the warning remains. For a real articulated blade
+  (ν = 1, γ/16 ≈ 0.25) this is the same.
+- **Item 10.** SmartBird: mean moment 0.005 N·m (moment coefficient 0.003) — a small tail can provide it;
+  alternating ±0.29 N·m at the flapping frequency — without holding, the body would rock by about ±14°.
+  Snowbird: −8.3 N·m (−0.01) and ±116 N·m, about ±5°. This does not change the verdict (the tail is not modelled),
+  but it is stated. It was checked that the moment measured this way matches the hinge moment from Newton–Euler
+  (difference 0.034 out of 147 N·m).
 
-### Что изменилось у аппаратов
+### What changed for the vehicles
 
-| Аппарат | Было | Стало | Почему |
+| Vehicle | Before | After | Why |
 | --- | --- | --- | --- |
-| Ка-32 (проект ИИ) | «Разрушается»: срез стенки лопасти, 3,17 с | **«Летает»**: запас 1,71 (сжатая полка на раскрутке), 2 124 кВт из 3 266 кВт | п. 1 |
-| R22 | запас 1,90; «близко к резонансу, до 4,5 раза» | запас 2,20; «до 2 раз»; висение 81,1 кВт (было 80,9), на потолке 85,3 кВт против 97,7 (−12,7 %) | п. 1, 3, 5 |
-| Ка-26 (проект) | 438 кВт, запас 2,0, предупреждение о резонансе | 439 кВт, запас 1,99, без предупреждения | п. 5 |
-| Cessna 172S | сваливание 27,41 м/с; манёвр: перегрузка 3,62, запас 1,82 | 27,36 м/с; 3,65, запас 1,78; максимальная скорость та же (68,19 м/с) | п. 2: инерция по тангажу была на 70 % больше |
-| SmartBird | запас тяги 8,1 % веса | 9,0 % веса; мощность та же (8,78 Вт против 13 Вт, −32 %) | п. 8 |
-| Snowbird | «Летает на пределе» | то же; вибрация в кресле теперь видна вдоль корпуса — 0,92 м/с² (порог «тяжело» 1,25) | п. 7 |
-| Квадрокоптер | 168,3 Вт | 168,6 Вт | — |
+| Ka-32 (AI design) | "Breaks up": blade web shear, 3.17 s | **"Flies"**: margin 1.71 (compressed flange during spin-up), 2,124 kW of 3,266 kW | item 1 |
+| R22 | margin 1.90; "close to resonance, up to 4.5 times" | margin 2.20; "up to 2 times"; hover 81.1 kW (was 80.9), at the ceiling 85.3 kW vs 97.7 (−12.7 %) | items 1, 3, 5 |
+| Ka-26 (design) | 438 kW, margin 2.0, resonance warning | 439 kW, margin 1.99, no warning | item 5 |
+| Cessna 172S | stall 27.41 m/s; manoeuvre: load factor 3.62, margin 1.82 | 27.36 m/s; 3.65, margin 1.78; maximum speed unchanged (68.19 m/s) | item 2: pitch inertia was 70 % too high |
+| SmartBird | thrust margin 8.1 % of weight | 9.0 % of weight; power unchanged (8.78 W vs 13 W, −32 %) | item 8 |
+| Snowbird | "Flies at the limit" | same; seat vibration is now visible along the fuselage — 0.92 m/s² ("severe" threshold 1.25) | item 7 |
+| Quadcopter | 168.3 W | 168.6 W | — |
 
-Вердикты эталонов не изменились; изменился вердикт Ка-32 из проекта ИИ. Отпечатки телеметрии изменились,
-поэтому отчёты, сохранённые по ссылкам раньше, у зрителя будут показаны пересчитанными с предупреждением.
+The reference verdicts did not change; the verdict of the Ka-32 from the AI design did. Telemetry fingerprints changed,
+so reports saved earlier via links will be shown to the viewer recomputed, with a warning.
 
-### Что сверено без расхождений (или в пределах погрешности счёта)
+### What was verified without divergence (or within computational error)
 
-| Слой | Проверка | Расхождение |
+| Layer | Check | Divergence |
 | --- | --- | --- |
-| Динамика | Свободный корпус и винт в пустоте: момент импульса системы | 3·10⁻⁴ из 134 кг·м²/с |
-| | Корпус вращается навстречу винту: ω = I_винт·ω_отн/(I_корп + I_винт) | 0,00 % |
-| | Работа привода по моменту на валу (Ньютон — Эйлер) = кинетическая энергия (движок) | 0,11 % |
-| | Момент фиксатора (по моменту импульса) = момент на шарнире (Ньютон — Эйлер) | 0,02 % от наибольшего |
-| | Наклонная балка под весом: срез, сжатие, изгиб; то же крыло, заданное поворотом детали | 0,00 % |
-| | Конусность 4° в пустоте: растяжение F·cos β, срез F·sin β | 0,00 % |
-| Аэродинамика | Поляра на всём круге: непрерывность, симметрия, 90° (C_D = C_D0 + 1,98), 180° | точно |
-| | Прандтль — Глауэрт: наклон при M 0,5 | 0,00 % |
-| | Присоединённая масса (квазистационарная и нестационарная ветви) | 1,6 % (недобор амплитуды привода) |
-| Винты | Конусность не меняет мощность (порядок β²) | 0,01 % |
-| | Демпфирование взмаха — число Лока γ/(16ν) | 2,4 % |
-| Прочность | Срез по Журавскому, две оси | точно |
-| Атмосфера | МСА на 11, 20, 32 км; скорость звука; dp/dh = −ρg на 15 км | до 0,02 % |
-| Экипаж | Вибрация вдоль и поперёк корпуса одинаково, против передаточной функции полосы 2–16 Гц | 0,00 % |
+| Dynamics | Free body and rotor in vacuum: system angular momentum | 3·10⁻⁴ out of 134 kg·m²/s |
+| | Body counter-rotates against the rotor: ω = I_rotor·ω_rel/(I_body + I_rotor) | 0.00 % |
+| | Drive work from shaft torque (Newton–Euler) = kinetic energy (engine) | 0.11 % |
+| | Holding moment (from angular momentum) = hinge moment (Newton–Euler) | 0.02 % of the maximum |
+| | Inclined beam under weight: shear, compression, bending; the same wing defined by rotating the part | 0.00 % |
+| | 4° coning in vacuum: tension F·cos β, shear F·sin β | 0.00 % |
+| Aerodynamics | Polar over the full circle: continuity, symmetry, 90° (C_D = C_D0 + 1.98), 180° | exact |
+| | Prandtl–Glauert: lift slope at M 0.5 | 0.00 % |
+| | Added mass (quasi-steady and unsteady branches) | 1.6 % (drive amplitude shortfall) |
+| Rotors | Coning does not change power (order β²) | 0.01 % |
+| | Flap damping — Lock number γ/(16ν) | 2.4 % |
+| Strength | Zhuravskii shear, two axes | exact |
+| Atmosphere | ISA at 11, 20, 32 km; speed of sound; dp/dh = −ρg at 15 km | up to 0.02 % |
+| Crew | Vibration along and across the fuselage treated equally, against the 2–16 Hz band transfer function | 0.00 % |
 
-Сверено чтением с теорией и источниками, расхождений не найдено: импульсная теория винта (Глауэрт),
-концевые потери Прандтля B = 1 − √(2C_T)/N, κ = 1,15 и κ_int = 1,16 (Лейшман; соосная пара в модели —
-439 кВт против ручной оценки 429 кВт, 2,2 %), шаг висения θ₀,₇₅ = 6C_T/(σa) + 1,5√(C_T/2), конусность
-сборщика, функция Вагнера (Джонс), постоянные Беддоуза — Лейшмана (1,7 и 3,0), таблица функции Теодорсена,
-пластина Хёрнера, изотропный и ортотропный предел выпучивания, коэффициенты k по EN 1993-1-5,
-кривая Баскина и поправка Гудмана, формула Гэгга — Феррара, импульсная теория воздушного винта,
-свойства металлов и композитов против источников в `data/research.md`.
+Verified by reading against theory and sources, no divergences found: rotor momentum theory (Glauert),
+Prandtl tip loss B = 1 − √(2C_T)/N, κ = 1.15 and κ_int = 1.16 (Leishman; the coaxial pair in the model —
+439 kW vs a hand estimate of 429 kW, 2.2 %), hover pitch θ₀,₇₅ = 6C_T/(σa) + 1.5√(C_T/2), the builder's
+coning, the Wagner function (Jones), Beddoes–Leishman constants (1.7 and 3.0), the Theodorsen function table,
+the Hoerner plate, isotropic and orthotropic buckling limits, k coefficients per EN 1993-1-5,
+the Basquin curve and Goodman correction, the Gagg–Ferrar formula, propeller momentum theory,
+metal and composite properties against the sources in `data/research.md`.
 
-### Что осталось
+### What remains
 
-- Слоистая стенка ±45° не введена: для Ка-32 она оказалась не нужна. Стенки однонаправленные — оценка среза
-  и выпучивания с запасом.
-- Инерция модели Cessna по тангажу 3 950 кг·м² — примерно вдвое больше, чем в открытых данных для симуляторов
-  (около 1 800 кг·м²): массы в пресете разложены грубо (эллипсоид фюзеляжа). На установившиеся режимы это
-  не влияет, манёвр идёт чуть медленнее.
-- Изгиб в плоскости вращения лопасти R22 — 8,1 Гц при 8,8 оборота в секунду. На висении возбуждения раз
-  за оборот нет, вердикт о нём не предупреждает.
-- Стреловидность: оси балки её учитывают, а обтекание по закону косого обтекания — нет. Ни у одного эталона
-  и ни у одного проекта сборщика стреловидности нет.
-- Не сверено с формулой: тяга машущего крыла при чистом повороте сечения (Гаррик для качания — только для взмаха),
-  винт в полёте вперёд (программы этого не испытывают), вихрь динамического срыва.
-- Коэффициент Саутвелла 1,17 взят по памяти; для однородной консоли в литературе встречается около 1,19
-  (разница в частоте около 1 %).
-- Курс и наклон махолёта по-прежнему удерживаются идеально; теперь это не молча, но оперения в модели нет.
+- The ±45° laminate web has not been introduced: it turned out not to be needed for the Ka-32. The webs are unidirectional — the shear
+  and buckling estimate is conservative.
+- The Cessna model's pitch inertia of 3,950 kg·m² is about twice the value in open simulator data
+  (about 1,800 kg·m²): the masses in the preset are distributed crudely (fuselage ellipsoid). This does
+  not affect steady-state regimes; the manoeuvre is slightly slower.
+- In-plane bending of the R22 blade is 8.1 Hz at 8.8 revolutions per second. In hover there is no once-per-rev
+  excitation, and the verdict does not warn about it.
+- Sweep: the beam axes account for it, but the aerodynamics do not follow the independence (sweep) principle. None of the references
+  and none of the builder's designs have sweep.
+- Not verified against a formula: flapping-wing thrust under pure section pitching (Garrick for plunging — only for flapping),
+  a rotor in forward flight (the programs do not test this), the dynamic stall vortex.
+- The Southwell coefficient of 1.17 was taken from memory; for a uniform cantilever the literature gives about 1.19
+  (a frequency difference of about 1 %).
+- The ornithopter's heading and attitude are still held perfectly; this is no longer silent, but the model has no tail.
 
-## Зависания страницы на тяжёлых аппаратах (2026-11-11)
+## Page freezes on heavy vehicles (2026-11-11)
 
-Жалоба: «увеличил количество несущих винтов — и всё зависло». Причин четыре, исправлены все.
+Complaint: "I increased the number of main rotors — and everything froze." There were four causes; all are fixed.
 
-1. **Расчёт кадра не был ограничен по времени.** Двенадцать винтов — это 37 тел; 0,05 с модельного времени
-   считались 0,5 с. После медленного кадра страница просила посчитать ещё больше (шаг времени растёт
-   вместе с задержкой), и показ уходил в «штопор»: кадры по полсекунды, кнопки не отвечают.
-   Теперь на расчёт отводится не больше 20 мс за кадр. Тяжёлый аппарат идёт медленнее выбранного темпа,
-   и строка под картинкой об этом пишет: «расчёт не успевает… показ идёт в N раза медленнее выбранного».
-   «К итогу» тоже считает порциями по времени, а не по 0,02 с модели.
-2. **Ползунки числа винтов, лопастей, крыльев и мест были дробными** — можно было выставить 4,04 винта
-   (сборщик делал из этого пять втулок, две почти в одной точке). Теперь шаг 1 и целые пределы,
-   а дробное значение из старой ссылки отклоняется с объяснением.
-3. **Ничто не мешало поставить винты так, что их диски перекрываются.** Винты мультикоптера стоят
-   по кругу, между соседними осями 2·L·sin(π/N); если это меньше диаметра (с допуском 5 %), проект
-   отклоняется: «12 винтов радиусом 0,12 м на плече 0,35 м не помещаются… Увеличьте плечо или уменьшите радиус».
+1. **Frame computation was not time-limited.** Twelve rotors means 37 bodies; 0.05 s of model time
+   took 0.5 s to compute. After a slow frame the page asked to compute even more (the time step grows
+   with the delay), and the display went into a "spin": half-second frames, buttons not responding.
+   Now computation gets no more than 20 ms per frame. A heavy vehicle runs slower than the selected pace,
+   and the line under the picture says so: "computation cannot keep up… display is running N times slower than selected".
+   "To result" also computes in time-based chunks rather than in 0.02 s of model time.
+2. **The sliders for the number of rotors, blades, wings and seats were fractional** — one could set 4.04 rotors
+   (the builder turned this into five hubs, two of them almost at the same point). Now the step is 1 with integer limits,
+   and a fractional value from an old link is rejected with an explanation.
+3. **Nothing prevented placing rotors so that their discs overlap.** Multicopter rotors are placed
+   in a circle, with 2·L·sin(π/N) between adjacent axes; if this is less than the diameter (with a 5 % tolerance), the design
+   is rejected: "12 rotors of radius 0.12 m on a 0.35 m arm do not fit… Increase the arm or reduce the radius".
 
-Замер на странице, просили 0,05 с модельного времени за кадр: раньше (двенадцать винтов) кадр длился 0,5 с;
-теперь (восемь винтов) — 23–27 мс, посчитано столько, сколько успело. При замедлении в 10 раз такой
-аппарат успевает полностью (14 мс на кадр).
+Measured on the page, with 0.05 s of model time requested per frame: before (twelve rotors) a frame took 0.5 s;
+now (eight rotors) — 23–27 ms, computing as much as fits. At a 10× slowdown such a
+vehicle keeps up fully (14 ms per frame).
 
-4. **«Зависание» после отклонённого проекта** (вторая жалоба, соосный Ка-52 с ползунком числа винтов на 4).
-   Страница не висела: проект с четырьмя винтами на одной оси отклонялся, модели не было, а стенд показывал
-   застывшую картинку прежнего аппарата, писал «Готов к пуску», и «Пуск» ничего не делал. Причина была только
-   внизу экрана допущений. Теперь стенд убирает картинку, пишет «Модель не собрана» с причиной и кнопкой
-   «← К допущениям», «Пуск» и «К итогу» отключены. Сообщение стало понятнее: «4 винта на одной оси не собрать —
-   так стоит только соосная пара… Три и больше винтов ставятся по кругу: задайте плечо не меньше радиуса».
-   Ползунок плеча у соосного вертолёта был пустым (значение 0, пределы «в 3 раза меньше и больше» — тоже 0);
-   теперь у нулевых допущений диапазон до трёх радиусов винта (для плеча) или до 1.
+4. **"Freeze" after a rejected design** (second complaint, a coaxial Ka-52 with the rotor-count slider at 4).
+   The page was not frozen: the design with four rotors on one axis was rejected, there was no model, and the stand showed
+   the frozen picture of the previous vehicle, said "Ready to launch", and "Launch" did nothing. The reason was only
+   at the bottom of the assumptions screen. Now the stand removes the picture, says "Model not built" with the reason and a
+   "← To assumptions" button, and "Launch" and "To result" are disabled. The message is clearer: "4 rotors on one axis cannot be built —
+   only a coaxial pair is arranged that way… Three or more rotors are placed in a circle: set the arm to at least the radius".
+   The arm slider for a coaxial helicopter was empty (value 0, limits "3 times smaller and larger" — also 0);
+   now zero assumptions get a range up to three rotor radii (for the arm) or up to 1.
 
-Что осталось: сам расчёт тяжёлых аппаратов не ускорен — восемь–двенадцать винтов считаются в 5–10 раз
-медленнее реального времени, и «К итогу» для них занимает минуты. Страница при этом отвечает.
+What remains: computation of heavy vehicles itself has not been sped up — eight to twelve rotors run 5–10 times
+slower than real time, and "To result" takes minutes for them. The page stays responsive meanwhile.
 
-## Соосный вертолёт и проверка на настоящем ИИ (2026-11-11)
+## Coaxial helicopter and a test on a real AI (2026-11-11)
 
-### Соосная схема
+### Coaxial layout
 
-Проект вертолёта с двумя винтами и нулевым плечом (`rotor.rotorCount = 2`, `rotor.armLength = 0`)
-собирается как соосный (`src/core/design.ts`): две втулки на общей оси, разнесённые по высоте на 0,2 радиуса,
-винты вращаются навстречу и управляются общим шагом. Раньше такой проект отклонялся: «винты перекрываются».
+A helicopter design with two rotors and zero arm (`rotor.rotorCount = 2`, `rotor.armLength = 0`)
+is built as coaxial (`src/core/design.ts`): two hubs on a common axis, separated vertically by 0.2 radius;
+the rotors counter-rotate and are controlled by collective pitch. Previously such a design was rejected: "rotors overlap".
 
-Соосные винты мешают друг другу — нижний работает в струе верхнего. Индуктивная мощность пары выше, чем
-у двух таких же винтов по отдельности, в κ_int раз. В модели κ_int = 1,16 (по измерениям; простая импульсная
-теория даёт 1,28–1,41; источники — `data/research.md`). С 1,28 мощность висения была бы примерно на 7 % выше.
+Coaxial rotors interfere with each other — the lower one works in the wake of the upper one. The induced power of the pair is higher than
+that of two identical isolated rotors by a factor of κ_int. In the model κ_int = 1.16 (from measurements; simple momentum
+theory gives 1.28–1.41; sources in `data/research.md`). With 1.28 the hover power would be about 7 % higher.
 
-Эталонный проект Ка-26 (`src/presets/designs.ts`; размах винтов, масса и мощность — по открытым данным,
-хорда, обороты, масса лопасти и стенка лонжерона — оценки): «Летает», висение 438 кВт из 478 кВт,
-запас прочности 2,0. Ручная оценка мощности — 429 кВт (расхождение 2 %). Взаимное влияние винтов
-добавляет к мощности висения 10 %.
+The Ka-26 reference design (`src/presets/designs.ts`; rotor span, mass and power from open data;
+chord, rpm, blade mass and spar web are estimates): "Flies", hover 438 kW of 478 kW,
+safety margin 2.0. The hand estimate of power is 429 kW (2 % divergence). Rotor interference
+adds 10 % to hover power.
 
-### Три описания, отправленные настоящему ИИ
+### Three descriptions sent to a real AI
 
-Через страницу, как это делает пользователь. Стоимость — 0,42 $ (0,17 + 0,18 + 0,07), по 26–29 с на аппарат.
-Проекты сохранены в `data/gen-live` и входят в набор проверок (без обращения к ИИ).
+Through the page, as a user does. Cost — $0.42 (0.17 + 0.18 + 0.07), 26–29 s per vehicle.
+The designs are saved in `data/gen-live` and are part of the check suite (without calling the AI).
 
-| Описание | Что собрал ИИ | Вердикт |
+| Description | What the AI built | Verdict |
 | --- | --- | --- |
-| «Робот-чайка: машет двумя крыльями и летит вперёд, как птица. Размах 2 м, масса 0,5 кг, 2 взмаха в секунду» | «птица»: скорость 10 м/с, размах взмаха 40°, стенка 0,5 мм, 25 Вт | «Летает»: 8 с, 80,3 м, 14 Вт из 25 Вт, запас прочности 3,0 |
-| «Орнитоптер из „Дюны“, 8 крыльев, экипаж 6 человек» | «стрекоза» (скорость 0): 8 крыльев по 11 м, 15 Гц, 12 т, 6 МВт | «Разрушается» на 0,007 с |
-| «Вертолёт Ка-32» | соосная схема: два трёхлопастных винта радиусом 7,95 м, плечо 0, 3,27 МВт | «Разрушается»: срез стенки лопасти на 3,17 с — см. «Не решено» |
+| "Robot seagull: flaps two wings and flies forward like a bird. Span 2 m, mass 0.5 kg, 2 flaps per second" | "bird": speed 10 m/s, flap amplitude 40°, web 0.5 mm, 25 W | "Flies": 8 s, 80.3 m, 14 W of 25 W, safety margin 3.0 |
+| "Ornithopter from 'Dune', 8 wings, crew of 6" | "dragonfly" (speed 0): 8 wings of 11 m each, 15 Hz, 12 t, 6 MW | "Breaks up" at 0.007 s |
+| "Ka-32 helicopter" | coaxial layout: two three-blade rotors of radius 7.95 m, arm 0, 3.27 MW | "Breaks up": blade web shear at 3.17 s — see "Unresolved" |
 
-ИИ верно отличил «птицу» от «стрекозы» и сам, по одному названию, собрал Ка-32 соосным.
+The AI correctly distinguished a "bird" from a "dragonfly" and, from the name alone, built the Ka-32 as coaxial on its own.
 
-### Что нашла живая проверка
+### What the live test found
 
-Ни одну из этих ошибок проверки без ИИ не ловили.
+None of these errors were caught by the checks without the AI.
 
-1. **Генерация по описанию не работала вовсе.** С двумя новыми полями схема проекта стала слишком большой:
-   ИИ отвечал ошибкой «compiled grammar is too large». Схема упрощена: соосность определяется по числу винтов
-   и нулевому плечу, без отдельного поля; масса крыла «посчитать по материалу» — 0 вместо `null`.
-2. **Автопилот трубы не мог уравнять подъёмную силу с весом у быстрого аппарата.** У «чайки» на 10 м/с
-   подъёмная сила меняется на 0,49 веса на градус, а автопилот допускал наклон не больше 0,25 (подобрано под
-   SmartBird и Snowbird) и раскачивался между двумя углами. Выбирался режим со срывом, мощность выходила
-   86 Вт, крыло «ломалось». Теперь наклон берётся из теории несущей линии, а когда найдены углы с нехваткой
-   и с избытком подъёмной силы, угол ищется между ними. SmartBird не изменился, Snowbird сдвинулся
-   в пределах 1,5 % (в трубе 866 Вт без возврата энергии и 314 Вт с возвратом вместо 868 и 316).
-3. **После поломки расчёт расходился**: число Маха обломков доходило до 10¹⁹. У оторвавшейся лёгкой детали
-   присоединённая масса воздуха больше её собственной, и расчёт по ускорению с прошлого шага неустойчив.
-   Теперь у обломков присоединённая масса не считается, число Маха берётся только по целым деталям,
-   а свободный полёт после поломки прерывается.
-4. **Лонжерон «птицы» был шире, чем у эталонов**, и раньше терял устойчивость. Теперь сечение такое же,
-   как у SmartBird и Snowbird.
-5. **Лопасть Ка-32 «ломалась» на земле под собственным весом** (на 0,017 с): её считали пустотелой
-   тонкостенной коробкой. У лопастей винтов за лонжероном сотовый или пенный заполнитель, стенки подкреплены.
-   У конструкции появился признак `structure.filled`: местная потеря устойчивости для такого сечения
-   не проверяется, остальные виды разрушения — как обычно. Стоит у лопастей вертолётов, собранных
-   по описанию, и у эталона R22 (его результат не изменился).
-6. **Старая ошибка сборщика**: у винта, вращающегося по часовой стрелке, с тремя и более лопастями угол
-   поворота лопасти выходил за 360°, и проект отклонялся. Это касалось и мультикоптеров с трёхлопастными винтами.
+1. **Generation from a description did not work at all.** With two new fields the design schema became too large:
+   the AI responded with the error "compiled grammar is too large". The schema was simplified: coaxiality is determined by the number of rotors
+   and zero arm, without a separate field; wing mass "compute from material" is 0 instead of `null`.
+2. **The wind-tunnel autopilot could not balance lift against weight on a fast vehicle.** For the "seagull" at 10 m/s
+   lift changes by 0.49 of weight per degree, while the autopilot allowed a slope of no more than 0.25 (tuned for
+   SmartBird and Snowbird) and oscillated between two angles. A stalled regime was chosen, power came out
+   at 86 W, and the wing "broke". Now the slope is taken from lifting-line theory, and once angles with a lift deficit
+   and a lift excess are found, the angle is searched between them. SmartBird did not change; Snowbird shifted
+   within 1.5 % (in the tunnel 866 W without energy recovery and 314 W with recovery instead of 868 and 316).
+3. **After breakage the computation diverged**: the Mach number of the debris reached 10¹⁹. For a detached light part
+   the added air mass is larger than its own, and computation from the previous step's acceleration is unstable.
+   Now added mass is not computed for debris, the Mach number is taken only over intact parts,
+   and free flight is terminated after breakage.
+4. **The "bird" spar was wider than that of the references** and previously lost stability. Now the section is the same
+   as for SmartBird and Snowbird.
+5. **The Ka-32 blade "broke" on the ground under its own weight** (at 0.017 s): it was treated as a hollow
+   thin-walled box. Rotor blades have honeycomb or foam filler behind the spar, and the walls are stiffened.
+   The structure gained a `structure.filled` flag: local buckling is not checked for such a section;
+   the other failure modes are checked as usual. It is set on the blades of helicopters built
+   from a description and on the R22 reference (its result did not change).
+6. **An old builder error**: for a clockwise-rotating rotor with three or more blades, the blade
+   rotation angle went past 360°, and the design was rejected. This also affected multicopters with three-blade rotors.
 
-### Не решено
+### Unresolved
 
-Первые два пункта решены четвёртой проверкой физики (раздел «Четвёртая проверка физики» выше): срез давала
-раскладка нагрузок по осям детали, а не по оси лопасти с конусностью; предупреждение о резонансе — отсутствие
-демпфирования взмаха воздухом. Текст ниже оставлен как было записано.
+The first two items were resolved by the fourth physics review (section "Fourth physics review" above): the shear came from
+resolving loads along the part's axes instead of the axis of the coned blade; the resonance warning came from the absence
+of aerodynamic flap damping. The text below is left as originally written.
 
-- **Ка-32, собранный ИИ, получает «Разрушается», и это ошибка модели, а не аппарата.** Без учёта прочности
-  он висит: 2 119 кВт из 3 266 кВт. Ломается лопасть по срезу стенки (запас около 1). Стенка лонжерона
-  считается однонаправленным стеклопластиком, у которого прочность на срез 40 МПа; у настоящих лопастей
-  срез несут слои ±45°. Нужна модель слоистой стенки — она же сделает точнее и потерю устойчивости.
-  Эталонному Ка-26 хватает запаса только со стенкой 9 мм.
-- **Предупреждение «близко к резонансу» у лопастей.** Первая частота взмаха лопасти, жёстко закреплённой
-  во втулке, всегда около 1,1 оборота; у настоящих лопастей взмах сильно гасится воздухом, а в модели
-  демпфирование 3 %.
-- Корпус Ка-32 на странице выглядит раздутым: ИИ записал в высоту корпуса высоту вертолёта с винтами (5,4 м).
+- **The AI-built Ka-32 gets "Breaks up", and this is an error of the model, not of the vehicle.** Without strength taken into account
+  it hovers: 2,119 kW of 3,266 kW. The blade breaks by web shear (margin about 1). The spar web
+  is treated as unidirectional fibreglass, whose shear strength is 40 MPa; in real blades
+  shear is carried by ±45° plies. A laminate web model is needed — it will also make buckling more accurate.
+  The Ka-26 reference has enough margin only with a 9 mm web.
+- **The "close to resonance" warning on blades.** The first flap frequency of a blade rigidly fixed
+  in the hub is always about 1.1 per rev; in real blades flapping is strongly damped by the air, while the model has
+  3 % damping.
+- The Ka-32 fuselage looks bloated on the page: the AI wrote the height of the helicopter with rotors (5.4 m) into the fuselage height.
 
-## Свободный полёт махолёта (2026-11-11)
+## Ornithopter free flight (2026-11-11)
 
-> Числа Snowbird в этом и следующих разделах — до пятой проверки физики. С кинематикой из диссертации Reichert
-> (0,65 Гц, ход законцовки ±1,0 м, закрутка ±7°) модель Snowbird в воздухе не держит — см. «Пятая проверка физики».
+> The Snowbird numbers in this and the following sections predate the fifth physics check. With the kinematics from Reichert's thesis
+> (0.65 Hz, tip stroke ±1.0 m, twist ±7°) the Snowbird model does not stay in the air — see "Fifth physics check".
 
 ```bash
-npm run stand -- smartbird free    # подбор режима в потоке, затем свободный полёт
+npm run stand -- smartbird free    # trim search in the stream, then free flight
 npm run report -- snowbird free
 ```
 
-Новая программа `free` — «Свободный полёт махолёта» (`src/core/programs.ts`). На странице она стоит
-по умолчанию у SmartBird и Snowbird.
+The new `free` program is "Ornithopter free flight" (`src/core/programs.ts`). On the page it is
+the default for SmartBird and Snowbird.
 
-1. **Подбор режима** — тот же автопилот трубы: корпус закреплён во встречном потоке, подбираются угол
-   установки и закручивание крыла. На странице эта часть идёт ускоренно (1–5 с).
-2. **Отпускание.** Встречный поток превращается в скорость аппарата: всем телам добавляется скорость V,
-   ветру — тоже (`Sim.boost`). Обтекание от этого не меняется. Корпус отпускается: движение вперёд
-   и по высоте свободно, курс и наклон корпуса удерживаются.
-3. **Полёт** — 16 взмахов, но не меньше 8 с. Автопилот раз за взмах поправляет угол установки крыльев
-   (высота) и закручивание (скорость).
+1. **Trim search** — the same wind-tunnel autopilot: the body is fixed in the oncoming flow, and the wing
+   incidence and twist are tuned. On the page this part runs accelerated (1–5 s).
+2. **Release.** The oncoming flow is converted into the vehicle's velocity: velocity V is added to every body,
+   and to the wind as well (`Sim.boost`). The flow around the vehicle does not change. The body is released: forward
+   and vertical motion are free, heading and body pitch are held.
+3. **Flight** — 16 flaps, but no less than 8 s. Once per flap the autopilot corrects the wing incidence
+   (altitude) and the twist (speed).
 
-Как устроен автопилот. У крыла просадка гасит сама себя: снижаясь, оно встречает поток под большим углом.
-Поэтому за взмах устанавливается не ускорение, а скорость снижения, пропорциональная отклонению угла
-установки от балансировочного: v_y = V·Δθ. Автопилот по каждому взмаху уточняет балансировочный угол
-и добавляет поправку, которая за взмах убирает 35 % ошибки по высоте. Со скоростью — так же, через
-закручивание. Первая версия автопилота считала, что угол задаёт ускорение, и не держала ни высоту,
-ни скорость: SmartBird за 8 с терял 0,43 м и 5 % скорости.
+How the autopilot works. A wing damps its own sink: as it descends, it meets the flow at a higher angle.
+So over a flap what settles is not an acceleration but a sink rate proportional to the deviation of the incidence
+from the trim value: v_y = V·Δθ. On each flap the autopilot refines the trim incidence
+and adds a correction that removes 35% of the altitude error per flap. Speed is handled the same way, through
+twist. The first version of the autopilot assumed the angle sets acceleration and held neither altitude
+nor speed: SmartBird lost 0.43 m and 5% of its speed in 8 s.
 
-Мерило полёта — полная энергия (высота + V²/2g): её потеря на пройденном пути равна нехватке тяги.
-Потеря больше 20 % сопротивления — «Не взлетает», от 5 до 20 % — «Летает на пределе». Мощность
-сравнивается с располагаемой так же, как в трубе.
+The measure of flight is total energy (altitude + V²/2g): its loss over the distance flown equals the thrust deficit.
+A loss above 20% of drag is "Does not fly", 5 to 20% is "Flies at the limit". Power
+is compared with the available power the same way as in the wind tunnel.
 
-Результаты:
+Results:
 
-| | SmartBird | Snowbird | Рекордный полёт Snowbird |
+| | SmartBird | Snowbird | Snowbird record flight |
 | --- | --- | --- | --- |
-| Вердикт | «Летает» | «Летает на пределе» (мощности хватает только с возвратом энергии) | — |
-| Полёт | 8 с, 16 взмахов, 39,8 м | 19,3 с, 16 взмахов, 136 м | 19,3 с, 16 взмахов, 145 м |
-| Высота от начальной | от −0,024 до +0,028 м | от 0 до +0,063 м | — |
-| Скорость | 4,79…5,02 м/с при заданных 5 | 6,94…7,13 м/с при заданных 7,1 | 7,1 м/с в среднем |
-| Мощность (в трубе) | 8,96 Вт (8,80 Вт) | 844 Вт без возврата (866 Вт) | 600–700 Вт на рабочем ходе (модель: 575 Вт) |
+| Verdict | "Flies" | "Flies at the limit" (power suffices only with energy recovery) | — |
+| Flight | 8 s, 16 flaps, 39.8 m | 19.3 s, 16 flaps, 136 m | 19.3 s, 16 flaps, 145 m |
+| Altitude relative to start | −0.024 to +0.028 m | 0 to +0.063 m | — |
+| Speed | 4.79…5.02 m/s with 5 commanded | 6.94…7.13 m/s with 7.1 commanded | 7.1 m/s average |
+| Power (in wind tunnel) | 8.96 W (8.80 W) | 844 W without recovery (866 W) | 600–700 W on the power stroke (model: 575 W) |
 
-Проверки (`npm run check`, раздел «Свободный полёт махолёта»):
+Checks (`npm run check`, section "Ornithopter free flight"):
 
-| Проверка | Результат |
+| Check | Result |
 | --- | --- |
-| Корпус в потоке 5 м/с и корпус, идущий 5 м/с в неподвижном воздухе: подъёмная сила и мощность за взмах | совпадают до пятого знака |
-| При отпускании нет ложного рывка в перегрузке | отклонение от 1 g — 0,000 |
-| Закон Ньютона: скорость корпуса за взмах меняется на импульс внешних сил | расхождение до 0,0012 м/с при импульсах до 0,22 м/с |
-| SmartBird с вчетверо большим сопротивлением корпуса | «Не взлетает»: за 3,6 с скорость упала до 2,4 м/с, полёт прерван |
+| Body in a 5 m/s flow vs body moving at 5 m/s through still air: lift and power per flap | agree to the fifth digit |
+| No spurious load-factor jerk on release | deviation from 1 g — 0.000 |
+| Newton's law: body velocity over a flap changes by the impulse of external forces | discrepancy up to 0.0012 m/s for impulses up to 0.22 m/s |
+| SmartBird with four times the body drag | "Does not fly": speed dropped to 2.4 m/s in 3.6 s, flight aborted |
 
-Что показал свободный полёт. Свободный корпус дёргается от взмахов — вперёд-назад и вверх-вниз.
-У SmartBird при тех же настройках это меняет подъёмную силу на 4–6 %, а тяги становится меньше:
-автопилоту пришлось уменьшить закручивание с 81 до 63–66 % наибольшего. Запас тяги в полёте поэтому
-меньше, чем показывает труба.
+What free flight showed. A free body is jerked by the flapping — fore-aft and up-down.
+For SmartBird at the same settings this changes lift by 4–6%, and thrust decreases:
+the autopilot had to reduce twist from 81 to 63–66% of maximum. The thrust margin in flight is therefore
+smaller than the wind tunnel shows.
 
-Беспилотные аппараты. В свободном полёте корпус SmartBird трясёт: 3,1 м/с² в полосе 2–16 Гц, для человека
-это опасно. Раньше корпус был закреплён, и вопрос не возникал. У спецификации появился признак
-`crew.unmanned` (SmartBird, квадрокоптер, проекты с нулём мест): перегрузки таких аппаратов показываются
-в отчёте для сведения, а на вердикт не влияют.
+Unmanned vehicles. In free flight the SmartBird body shakes: 3.1 m/s² in the 2–16 Hz band, which would be
+dangerous for a human. Previously the body was fixed and the question did not arise. The specification now has a
+`crew.unmanned` flag (SmartBird, the quadcopter, designs with zero seats): load factors of such vehicles are shown
+in the report for information and do not affect the verdict.
 
-Ограничения:
+Limitations:
 
-- Курс, крен и наклон корпуса удерживаются идеально: хвостовое оперение и боковое движение не моделируются.
-  С 2026-11-12 момент, которым корпус держат, меряется и называется в вердикте (см. «Четвёртая проверка физики»).
-- Старт — сразу в воздухе на крейсерской скорости (запуск с руки, буксировка). Разбега и набора высоты нет.
-- Привод кинематический: крылья машут с заданной частотой при любой нагрузке. Мощность считается,
-  но движение не ограничивает.
-- Близость земли не учитывается. Настоящий Snowbird летел в метре от земли, где индуктивное сопротивление меньше.
-- 16 взмахов — короткий полёт: за 70 взмахов режим у обоих аппаратов тоже устойчив (проверено вручную),
-  но в набор проверок это не входит.
+- Heading, roll and body pitch are held perfectly: the tail surfaces and lateral motion are not modelled.
+  Since 2026-11-12 the moment used to hold the body is measured and named in the verdict (see "Fourth physics check").
+- The start is straight in the air at cruise speed (hand launch, tow). There is no takeoff run or climb.
+- The drive is kinematic: the wings flap at the commanded frequency under any load. Power is computed
+  but does not limit the motion.
+- Ground effect is not taken into account. The real Snowbird flew a metre above the ground, where induced drag is lower.
+- 16 flaps is a short flight: over 70 flaps the regime is also stable for both vehicles (checked manually),
+  but this is not part of the check suite.
 
-## Махолёт по описанию: «птица» или «стрекоза» (2026-11-11)
+## Ornithopter from a description: "bird" or "dragonfly" (2026-11-11)
 
-Раньше махолёт, собранный по описанию или картинке, всегда строился как висящий аппарат — без органа
-балансировки. В трубу и в свободный полёт он попасть не мог: программа отвечала «не применимо».
+Previously an ornithopter built from a description or picture was always built as a hovering vehicle — with no trim
+control. It could not get into the wind tunnel or free flight: the program answered "Not applicable".
 
-Теперь в проекте, который заполняет ИИ, есть поле `flapping.cruiseSpeed` (`src/core/design.ts`):
+Now the design that the AI fills in has a `flapping.cruiseSpeed` field (`src/core/design.ts`):
 
-- **Скорость полёта вперёд задана — «птица».** Сборщик строит аппарат так же, как эталоны SmartBird
-  и Snowbird: крыло работает в набегающем потоке, средний угол установки — орган балансировки, на взмахе
-  крыло закручивается к законцовке. Наибольшее закручивание берётся с запасом 20 % над углом потока
-  у законцовки, arctg(скорость законцовки / скорость полёта), в пределах 15–60°. На странице такой аппарат
-  сразу открывается в программе «Свободный полёт махолёта».
-- **Скорость 0 — «стрекоза».** Аппарат висит на месте, как орнитоптер «Дюны»: всё как раньше.
-- **В старых ссылках поля нет** — такой проект собирается как «стрекоза», в точности как раньше (проверяется).
+- **Forward flight speed set — "bird".** The builder constructs the vehicle the same way as the SmartBird
+  and Snowbird references: the wing works in the oncoming flow, the mean incidence is the trim control, and on the stroke
+  the wing twists towards the tip. Maximum twist is taken with a 20% margin above the flow angle
+  at the tip, arctan(tip speed / flight speed), within 15–60°. On the page such a vehicle
+  opens directly in the "Ornithopter free flight" program.
+- **Speed 0 — "dragonfly".** The vehicle hovers in place, like the ornithopter from "Dune": everything as before.
+- **Old links do not have the field** — such a design is built as a "dragonfly", exactly as before (this is checked).
 
-Проверено без обращения к ИИ на эталонном проекте «робот-чайка» (числа SmartBird, `src/presets/designs.ts`):
-собирается, в свободном полёте — «Летает»: 8 с, 16 взмахов, 40,2 м, скорость 4,99 м/с при заданных 5,
-мощность 8,68 Вт из 50 Вт.
+Checked without calling the AI on the reference design "robot seagull" (SmartBird numbers, `src/presets/designs.ts`):
+it builds, and in free flight it gets "Flies": 8 s, 16 flaps, 40.2 m, speed 4.99 m/s with 5 commanded,
+power 8.68 W out of 50 W.
 
-Оговорки:
+Caveats:
 
-- На настоящем ИИ проверено двумя описаниями (раздел выше): «птицу» и «стрекозу» он различил верно.
-  Два описания — не статистика.
-- Если ИИ не задаст массу крыла, она считается по лонжерону и обшивке. Для «птицы» обшивка принята лёгкой —
-  1 кг/м² на метр хорды. У того же проекта без заданной массы аппарат выходит 0,67 кг вместо 0,48 кг
-  и в свободном полёте не держится: за 2,3 с скорость падает до 3,1 м/с.
+- With the real AI this was checked on two descriptions (section above): it distinguished "bird" and "dragonfly" correctly.
+  Two descriptions are not statistics.
+- If the AI does not specify the wing mass, it is computed from the spar and skin. For a "bird" the skin is assumed light —
+  1 kg/m² per metre of chord. The same design without a specified mass comes out at 0.67 kg instead of 0.48 kg
+  and does not stay up in free flight: speed drops to 3.1 m/s in 2.3 s.
 
-## Махолёты на стенде: что видит человек (2026-11-11)
+## Ornithopters on the stand: what a person sees (2026-11-11)
 
-Расчёт давал SmartBird «Летает», а Snowbird «Летает на пределе», но на странице оба выглядели нелетающими:
+The calculation gave SmartBird "Flies" and Snowbird "Flies at the limit", but on the page both looked unable to fly:
 
-1. Автопилот трубы перебирает 60–110 циклов взмаха: 30 с модельного времени у SmartBird, 135 с у Snowbird.
-   Стенд показывал это с замедлением в 10 раз — 5 и 22 минуты — и всё это время писал
-   «Пока: Не взлетает: подъёмная сила 0 % веса».
-2. Аппарат в трубе закреплён, поток не был виден, после испытания картинка замирала.
-3. В программах «Взлёт и висение» и «Привязной стенд» оба получали «Не взлетает», а программа для самолётов
-   отсылала к висению.
+1. The wind-tunnel autopilot goes through 60–110 flap cycles: 30 s of model time for SmartBird, 135 s for Snowbird.
+   The stand showed this slowed down 10 times — 5 and 22 minutes — and the whole time displayed
+   "So far: Does not fly: lift 0% of weight".
+2. The vehicle in the wind tunnel is fixed, the flow was not visible, and the picture froze after the test.
+3. In the "Takeoff and hover" and "Tethered stand" programs both got "Does not fly", and the program for airplanes
+   referred to hover.
 
-Что изменено (`src/web/main.ts`, `src/web/recorder.ts`, `src/core/analyze.ts`, `src/core/programs.ts`):
+What was changed (`src/web/main.ts`, `src/web/recorder.ts`, `src/core/analyze.ts`, `src/core/programs.ts`):
 
-- Труба считается ускоренно сразу по кнопке «Пуск»: вердикт через 1–5 с. Потом найденный режим полёта идёт
-  по кругу в выбранном замедлении (последний целый взмах из записи кадров). Виден поток — штрихи, которые
-  несёт мимо аппарата, — и уходящая назад сетка земли.
-- До конца испытания вердикт выносится только по тому, что уже случилось (разрушение, перегрузка экипажа).
-  В остальных случаях стенд пишет «Идёт испытание», а не «Пока: Не взлетает».
-- Махолёт для полёта вперёд (задана крейсерская скорость) в программах висения получает «Не висит»
-  с пояснением и отсылкой к программе полёта вперёд; программа для самолётов отсылает туда же.
-- Повтор последнего цикла по кругу включается и после привязного стенда и предельного режима — там корпус
-  тоже закреплён.
+- The wind tunnel is computed accelerated immediately on the "Start" button: verdict in 1–5 s. Then the flight regime found is played
+  in a loop at the selected slow-motion rate (the last whole flap from the frame recording). The flow is visible — streaks carried
+  past the vehicle — along with the ground grid receding backwards.
+- Until the test ends, a verdict is issued only on what has already happened (breakup, crew overload).
+  Otherwise the stand displays "Test in progress" rather than "So far: Does not fly".
+- An ornithopter for forward flight (cruise speed set) gets "Does not hover" in the hover programs,
+  with an explanation and a pointer to the forward-flight program; the program for airplanes points there too.
+- Looped replay of the last cycle is also enabled after the tethered stand and the limit regime — there the body
+  is fixed as well.
 
-Свободный полёт махолёта появился позже — см. раздел выше.
+Ornithopter free flight appeared later — see the section above.
 
-## Проверка прочности (2026-11-11)
+## Strength check (2026-11-11)
 
 ```bash
-npm run physics -- --strength   # только проверки прочности, несколько секунд
+npm run physics -- --strength   # strength checks only, a few seconds
 ```
 
-Расчёт прочности (`src/core/strength.ts`, `src/core/section.ts`, нагрузки — `src/core/sim.ts`) сверен
-с формулами сопромата на отдельных сечениях и на крыле в потоке: 25 проверок, все проходят.
+The strength calculation (`src/core/strength.ts`, `src/core/section.ts`, loads — `src/core/sim.ts`) was verified
+against strength-of-materials formulas on individual sections and on a wing in a flow: 25 checks, all pass.
 
-| Что сверено | Расхождение |
+| What was verified | Discrepancy |
 | --- | --- |
-| Площадь и момент инерции коробки, напряжение при изгибе, кручение (Бредт), срез, эквивалентное напряжение (Мизес), запас | до округления |
-| Критическое напряжение стенок: сжатие, изгиб взмаха, изгиб в плоскости крыла | до округления |
-| Труба: изгиб в двух плоскостях | до округления |
-| Усталость: кривая Баскина, поправка Гудмана | до 0,1 % |
-| Крыло в ровном потоке: напряжения в корне от подъёмной силы и сопротивления | 0,5 % |
-| Упругое крыло у резонанса (привод на половине собственной частоты): размах напряжений × 1,33 | 0,2 % |
+| Box area and moment of inertia, bending stress, torsion (Bredt), shear, equivalent stress (von Mises), margin | to rounding |
+| Critical wall stress: compression, flapwise bending, in-plane (chordwise) bending | to rounding |
+| Tube: bending in two planes | to rounding |
+| Fatigue: Basquin curve, Goodman correction | up to 0.1% |
+| Wing in steady flow: root stresses from lift and drag | 0.5% |
+| Elastic wing near resonance (drive at half the natural frequency): stress range × 1.33 | 0.2% |
 
-Найдено и исправлено четыре ошибки:
+Four bugs were found and fixed:
 
-1. **Стенки из композита выпучивались «как металл».** Критическое напряжение считалось по формуле
-   изотропной пластины с продольным модулем. У композита стенку держит ещё и поперечный модуль, а он в разы
-   меньше. Теперь жёсткость пластины — B = √(Q₁₁·Q₂₂) + Q₁₂ + 2·Q₆₆, σ_кр = k/4 · π²t²/(6w²) · B.
-   Для однонаправленного углепластика (135 / 10 / 5 ГПа) B = 50 ГПа вместо 297 ГПа — в 5,9 раза меньше.
-   У металла формула сводится к прежней. Поперечный модуль и модуль сдвига добавлены в библиотеку
-   углепластикам, стеклопластику, арамиду и ели; где данных нет, они взяты по обобщённому углепластику
-   и помечены как оценки.
-2. **Одно критическое напряжение на всё сечение.** Бралось меньшее из двух (полка при сжатии, стенка при
-   изгибе взмаха) и сравнивалось с наибольшим сжатием в любом углу. Теперь каждая из четырёх стенок коробки
-   проверяется отдельно: своя ширина, своё распределение напряжений, коэффициент k от 4 (равномерное сжатие)
-   до 23,9 (изгиб в плоскости стенки) по EN 1993-1-5, табл. 4.1.
-3. **У трубы изгибы в двух плоскостях складывались арифметически** — напряжение завышалось до √2 раз.
-   Теперь — по суммарному моменту.
-4. **Усталость считалась только по верхней полке**, без изгиба в плоскости крыла. Теперь — по худшему
-   из четырёх углов сечения.
+1. **Composite walls buckled "like metal".** The critical stress was computed with the formula for an
+   isotropic plate using the longitudinal modulus. In a composite the wall is also held by the transverse modulus, which is several times
+   lower. Now the plate stiffness is B = √(Q₁₁·Q₂₂) + Q₁₂ + 2·Q₆₆, σ_cr = k/4 · π²t²/(6w²) · B.
+   For unidirectional carbon fibre (135 / 10 / 5 GPa) B = 50 GPa instead of 297 GPa — 5.9 times less.
+   For metal the formula reduces to the previous one. The transverse modulus and shear modulus were added to the library
+   for the carbon fibres, glass fibre, aramid and spruce; where no data exist, they are taken from a generic carbon fibre
+   and marked as estimates.
+2. **One critical stress for the whole section.** The lower of two was taken (flange in compression, web in
+   flapwise bending) and compared with the highest compression at any corner. Now each of the four box walls
+   is checked separately: its own width, its own stress distribution, coefficient k from 4 (uniform compression)
+   to 23.9 (bending in the plane of the wall) per EN 1993-1-5, Table 4.1.
+3. **For the tube, bending in two planes was added arithmetically** — the stress was overestimated by up to √2 times.
+   Now it uses the resultant moment.
+4. **Fatigue was computed only for the upper flange**, without in-plane bending. Now it uses the worst
+   of the four corners of the section.
 
-Что изменилось у аппаратов:
+What changed for the vehicles:
 
-| Аппарат | Запас был | Запас стал | Вердикт |
+| Vehicle | Margin was | Margin now | Verdict |
 | --- | --- | --- | --- |
-| Орнитоптер «Дюны» | 0,003 | 0,001 | «Разрушается»; материал нужен в ~2 640 раз жёстче (было ~640) |
-| Cessna 172S (алюминий) | 5,7; на предельном режиме 1,82 | те же | «Летает» |
-| R22 (алюминий) | 1,9 | 1,9 | «Летает» |
-| Festo SmartBird | ~27 | 6,5 | «Летает» |
-| UTIAS Snowbird | 4,9 | 1,02 → проверка снята | «Летает на пределе» (по мощности, как и раньше) |
+| Ornithopter from "Dune" | 0.003 | 0.001 | "Breaks up"; material needs to be ~2,640 times stiffer (was ~640) |
+| Cessna 172S (aluminium) | 5.7; 1.82 in the limit regime | unchanged | "Flies" |
+| R22 (aluminium) | 1.9 | 1.9 | "Flies" |
+| Festo SmartBird | ~27 | 6.5 | "Flies" |
+| UTIAS Snowbird | 4.9 | 1.02 → check removed | "Flies at the limit" (on power, as before) |
 
-У Snowbird лонжерон в модели был догадкой: коробка из однонаправленного углепластика со стенкой 4 мм.
-Такая весила бы 43 кг на одно крыло — как весь аппарат. Устройство настоящего лонжерона не опубликовано,
-а крыло у него поддерживают приводные тросы, которых в модели нет. Подгонять догадку под ответ нечестно,
-поэтому силовой набор у Snowbird убран: прочность не проверяется, и это написано в описании аппарата.
+The Snowbird spar in the model was a guess: a unidirectional carbon-fibre box with a 4 mm wall.
+It would weigh 43 kg per wing — as much as the whole vehicle. The design of the real spar has not been published,
+and its wing is supported by drive cables, which are not in the model. Fitting the guess to the answer would be dishonest,
+so the Snowbird's structural members were removed: strength is not checked, and this is stated in the vehicle's description.
 
-По дороге найден недочёт отчёта: предупреждение «Прочность не проверялась» выводилось только при вердикте
-«Летает». Теперь оно есть при любом вердикте, а в телеметрии отчёта стоит строка «Запас прочности: не проверялся».
+Along the way a report flaw was found: the warning "Strength not checked" was printed only with the verdict
+"Flies". Now it appears with any verdict, and the report telemetry has the line "Strength margin: not checked".
 
-Оговорки:
+Caveats:
 
-- Стенки считаются однонаправленными, волокна вдоль размаха. У настоящих лонжеронов в стенках есть слои
-  ±45°, они устойчивее. Для материала из библиотеки оценка верная, для настоящей конструкции — с запасом.
-- Не считаются: выпучивание стенок от сдвига, расслоение композита, общая потеря устойчивости крыла,
-  концентрация напряжений у узлов крепления.
-- Усталость считается только для материалов с данными (металлы); у композитов данных нет.
+- Walls are treated as unidirectional, fibres along the span. Real spars have ±45° plies
+  in the webs, which are more stable. For a library material the estimate is correct; for a real structure it is conservative.
+- Not computed: shear buckling of the walls, composite delamination, global buckling of the wing,
+  stress concentration at the attachment fittings.
+- Fatigue is computed only for materials with data (metals); there are no data for composites.
 
-## Нестационарное обтекание машущего крыла (2026-11-11)
+## Unsteady flow over a flapping wing (2026-11-11)
 
 ```bash
-npm run physics -- --unsteady   # только проверки нестационарной модели, несколько секунд
+npm run physics -- --unsteady   # unsteady-model checks only, a few seconds
 ```
 
-У поверхности с `aero.unsteady: true` (SmartBird и Snowbird) подъёмная сила считается с памятью потока
+For a surface with `aero.unsteady: true` (SmartBird and Snowbird) lift is computed with flow memory
 (`src/core/aero.ts`, `src/core/sim.ts`):
 
-1. **Запаздывание подъёмной силы** — функция Вагнера в приближении Джонса,
-   φ(s) = 1 − 0,165·e^(−0,0455·s) − 0,335·e^(−0,3·s), s — путь в полухордах. Угол атаки берётся по скосу
-   в точке ¾ хорды (с учётом скорости поворота сечения). Сила направлена перпендикулярно *эффективному*
-   потоку: когда она отстаёт, она наклонена назад, и тяга взмаха меньше.
-2. **Запаздывание срыва** — упрощённая схема Беддоуза — Лейшмана (отрыв с задней кромки): два запаздывания
-   первого порядка, Tp = 1,7 и Tf = 3,0 полухорды. Постоянные взяты из литературы для профиля NACA 0012
-   и не подбирались. При быстром росте угла подъёмная сила превышает статический максимум.
-3. **Присоединённая масса** — и от взмаха, и от поворота сечения в потоке.
+1. **Lift lag** — the Wagner function in Jones's approximation,
+   φ(s) = 1 − 0.165·e^(−0.0455·s) − 0.335·e^(−0.3·s), s — distance in semichords. The angle of attack is taken from the downwash
+   at the ¾-chord point (including the section's pitch rate). The force is perpendicular to the *effective*
+   flow: when it lags, it is tilted backwards and the stroke thrust is lower.
+2. **Stall lag** — a simplified Beddoes–Leishman model (trailing-edge separation): two first-order lags,
+   Tp = 1.7 and Tf = 3.0 semichords. The constants are taken from the literature for the NACA 0012 airfoil
+   and were not tuned. With a rapid increase in angle, lift exceeds the static maximum.
+3. **Added mass** — both from flapping and from the section's rotation in the flow.
 
-Сверка с теорией:
+Comparison with theory:
 
-| Проверка | Расчёт | Теория | Расхождение |
+| Check | Computed | Theory | Discrepancy |
 | --- | --- | --- | --- |
-| Скачок угла атаки: сила сразу после | 0,530 от установившейся | φ ≈ 0,5 (Вагнер) | 0,2 % от формулы |
-| То же через 9,7 полухорды | 0,878 | φ(s) | 0,2 % |
-| Взмах, k = 0,094: тяга / квазистационарная | 0,725 | F² + G² = 0,735 (Гаррик) | 1,4 % |
-| Взмах, k = 0,283: тяга / квазистационарная | 0,504 | 0,489 | 3,0 % |
-| Взмах, k = 0,283: мощность / квазистационарная | 0,681 | F = 0,676 (Теодорсен) | 0,8 % |
-| Медленный рост угла через срыв | статическая поляра | — | до 0,8 % |
-| Быстрый рост угла (25° за 0,15 с) | C_L до 1,38 при статическом максимуме 1,2; срыв на 20° вместо 12° | — | качественно |
+| Step in angle of attack: force immediately after | 0.530 of steady-state | φ ≈ 0.5 (Wagner) | 0.2% from formula |
+| Same after 9.7 semichords | 0.878 | φ(s) | 0.2% |
+| Plunge, k = 0.094: thrust / quasi-steady | 0.725 | F² + G² = 0.735 (Garrick) | 1.4% |
+| Plunge, k = 0.283: thrust / quasi-steady | 0.504 | 0.489 | 3.0% |
+| Plunge, k = 0.283: power / quasi-steady | 0.681 | F = 0.676 (Theodorsen) | 0.8% |
+| Slow increase of angle through stall | static polar | — | up to 0.8% |
+| Rapid increase of angle (25° in 0.15 s) | C_L up to 1.38 with static maximum 1.2; stall at 20° instead of 12° | — | qualitative |
 
-Запаздывание срыва сверено только качественно и в пределе медленного изменения: формулы для него нет,
-а данных продувок в репозитории нет.
+Stall lag has been verified only qualitatively and in the slow-change limit: there is no formula for it,
+and there is no wind-tunnel data in the repository.
 
-Что это дало для эталонных махолётов (программа «труба»):
+What this gave for the reference ornithopters (the "wind tunnel" program):
 
-| | Квазистационарно | Только запаздывание силы | Сила и срыв (сейчас) | Реальность |
+| | Quasi-steady | Lift lag only | Lift and stall (current) | Reality |
 | --- | --- | --- | --- | --- |
-| SmartBird, запас тяги при 5 м/с | +5,8 % веса | −3,4 % веса | **+8,6 % веса** | летает |
-| SmartBird, мощность на взмах при 4,7 м/с | 10,7 Вт | — | **8,8 Вт** | 13 Вт |
-| Snowbird, вердикт | на пределе (±3°) | не взлетает при любом размахе | **на пределе (±4°)** | на пределе |
+| SmartBird, thrust margin at 5 m/s | +5.8% of weight | −3.4% of weight | **+8.6% of weight** | flies |
+| SmartBird, flapping power at 4.7 m/s | 10.7 W | — | **8.8 W** | 13 W |
+| Snowbird, verdict | at the limit (±3°) | does not fly at any stroke amplitude | **at the limit (±4°)** | at the limit |
 
-Одно запаздывание подъёмной силы уменьшает тягу вдвое, и в модели не летит ни один из двух настоящих
-махолётов: оба работают у срыва, и без запаздывания срыва модель односторонне занижает тягу.
-С обоими эффектами оба летят.
+Lift lag alone halves the thrust, and in the model neither of the two real
+ornithopters flies: both operate near stall, and without stall lag the model systematically underestimates thrust.
+With both effects both fly.
 
-Оговорки:
+Caveats:
 
-- Размах взмаха Snowbird не опубликован и подбирается так, чтобы работа за взмах сошлась с оценкой пилота
-  (600–700 Вт на рабочем ходе). С новой моделью это ±4° (628 Вт) вместо ±3°; предел закручивания поднят
-  до ±45° — выше угла потока у законцовки.
-- Мощность SmartBird теперь ниже опубликованной на 32 % (было 17 %): в допуске ТЗ (40 %), но хуже.
-- Поток «помнит» прошлое, поэтому автопилот трубы после каждой смены настроек пропускает цикл взмаха
-  и перекладывает управление плавно. Поиск режима занимает 60–110 циклов (у Snowbird — 137 с модельного
-  времени, 3–4 с расчёта).
-- Не учтены: вихрь динамического срыва, потеря подсасывающей силы у тонких профилей на малых числах
-  Рейнольдса, нестационарность по размаху. Вердикт об этом предупреждает.
-- Орнитоптер «Дюны» и аппараты, собранные по описанию, считаются по-прежнему квазистационарно:
-  у них взмах на месте, без набегающего потока, и крыло в глубоком срыве.
+- Snowbird's stroke amplitude has not been published and is tuned so that the work per flap matches the pilot's estimate
+  (600–700 W on the power stroke). With the new model this is ±4° (628 W) instead of ±3°; the twist limit has been raised
+  to ±45° — above the flow angle at the tip.
+- SmartBird's power is now 32% below the published figure (was 17%): within the spec tolerance (40%), but worse.
+- The flow "remembers" the past, so after each settings change the wind-tunnel autopilot skips a flap cycle
+  and shifts the controls smoothly. The trim search takes 60–110 cycles (for Snowbird, 137 s of model
+  time, 3–4 s of computation).
+- Not taken into account: the dynamic-stall vortex, loss of leading-edge suction on thin airfoils at low Reynolds
+  numbers, spanwise unsteadiness. The verdict warns about this.
+- The ornithopter from "Dune" and vehicles built from a description are still computed quasi-steadily:
+  they flap in place, without oncoming flow, and the wing is in deep stall.
 
-## Проверка физики (2026-11-11)
+## Physics verification (2026-11-11)
 
 ```bash
-npm run physics   # только проверки общих законов, около 2 минут
-npm run check     # всё вместе (на 2026-11-12 — 236 проверок), все проходят
+npm run physics   # only the checks against general laws, about 2 minutes
+npm run check     # everything together (236 checks as of 2026-11-12), all pass
 ```
 
-Ядро перечитано заново и проверено по законам, которые от программы не зависят (`src/cli/physics.ts`):
+The core was re-read from scratch and checked against laws that do not depend on the program (`src/cli/physics.ts`):
 
-| Проверка | Расчёт | Формула | Расхождение |
+| Check | Computed | Formula | Discrepancy |
 | --- | --- | --- | --- |
-| Свободное падение, путь за 2 с | 19,63 м | g·t²/2 | 0,03 % |
-| Установившаяся скорость падения | 17,90 м/с | √(2mg / ρ·C_D·S) | 0,01 % |
-| Перегрузка в кресле: падение / на земле | 0,000 g / 1,000 g | 0 / 1 | — |
-| Маятник, размах 90°: период | 2,360 с | 4·K(sin 45°)·√(2L/3g) | 0,3 % |
-| Маятник: потеря энергии за три периода | 1,96 % | 0 | числовое затухание, ~0,7 % за период |
-| Центробежная сила в корне лопасти | 14,21 кН | ω²·Σm·r | 0,00 % |
-| Тяга машущего крыла в потоке | 1,634 Н | ¼·ρ·c·a·θ₀²·ω²·R³/3 (Гаррик при F = 1) | 1,9 % |
-| Баланс энергии взмаха: мощность на валу | 32,65 Вт | тяга × скорость потока | 0,07 % |
-| Крыло без сопротивления под углом | тяга 0 | парадокс Даламбера | точно |
-| Симметрия: боковая сила орнитоптера | 1·10⁻¹⁰ Н из 1,7·10⁷ Н | 0 | — |
-| Вдвое меньший шаг: орнитоптер, R22, Cessna | — | тот же результат | 0,01–1,7 % |
+| Free fall, distance in 2 s | 19.63 m | g·t²/2 | 0.03 % |
+| Terminal fall velocity | 17.90 m/s | √(2mg / ρ·C_D·S) | 0.01 % |
+| Load factor in the seat: falling / on the ground | 0.000 g / 1.000 g | 0 / 1 | — |
+| Pendulum, 90° swing: period | 2.360 s | 4·K(sin 45°)·√(2L/3g) | 0.3 % |
+| Pendulum: energy loss over three periods | 1.96 % | 0 | numerical damping, ~0.7 % per period |
+| Centrifugal force at the blade root | 14.21 kN | ω²·Σm·r | 0.00 % |
+| Thrust of a flapping wing in a flow | 1.634 N | ¼·ρ·c·a·θ₀²·ω²·R³/3 (Garrick at F = 1) | 1.9 % |
+| Flapping energy balance: shaft power | 32.65 W | thrust × flow velocity | 0.07 % |
+| Wing without drag at an angle | thrust 0 | d'Alembert's paradox | exact |
+| Symmetry: ornithopter side force | 1·10⁻¹⁰ N out of 1.7·10⁷ N | 0 | — |
+| Half the time step: ornithopter, R22, Cessna | — | same result | 0.01–1.7 % |
 
-Что нашлось и исправлено:
+What was found and fixed:
 
-1. **Автопилот трубы застревал.** Тяга от закручивания крыла зависит немонотонно: мало — крыло срывается,
-   много — идёт «флюгером» и не тянет. Прежний регулятор крутил «в одну сторону», считал баланс достигнутым
-   при нехватке тяги до 1 % веса (а вердикт требовал строго ≥ 0) и не пускал угол установки выше срывного.
-   Из-за этого SmartBird «не держал вес», а Snowbird «не тянул». Теперь закручивание перебирается по всему
-   диапазону, подъёмная сила уравнивается методом секущих, режим T = D ищется на ветви без срыва, а прочность
-   и пики считаются только на найденном режиме (на пробах поиска детали не ломаются).
-2. **Мощность взмаха была завышена вдвое.** Считалась сумма модулей: торможение крыла стоило столько же,
-   сколько разгон. Привод, который тормозит деталь, энергию не тратит. Теперь две величины: без возврата
-   энергии торможения (сумма положительных частей по приводам) и с полным возвратом (среднее со знаком за целые
-   циклы — работа над воздухом). У орнитоптера «Дюны» это 7 630 и 2 890 МВт вместо 12 400 МВт. Подпись
-   «с полным возвратом» раньше стояла у числа, которое им не было.
-3. **Средние по неполному циклу.** Мощность и подъёмная сила усреднялись по окну 1 с и 0,5 с — у медленных
-   взмахов (Snowbird, 0,83 Гц) это не целый цикл. Теперь окна кратны циклу.
-4. **Данные Snowbird были догадками, хотя опубликованы** (`data/research.md`): площадь крыла 29,2 м²
-   (было 39 м² «чтобы держал вес»), полётная масса 114,3 кг, 16 взмахов за 19,3 с = 0,83 Гц (было 0,6),
-   мощность пилота 600–700 Вт на рабочем ходе (было 300 Вт). При настоящей площади аппарат летит на
-   C_L = 1,24 — у самого срыва.
-5. **Сопротивление SmartBird** подобрано под опубликованное качество L/D ≈ 7 (было ~10).
+1. **The wind-tunnel autopilot got stuck.** Thrust depends non-monotonically on wing twist: too little and the wing stalls,
+   too much and it "feathers" and produces no thrust. The old controller turned the twist "in one direction only", considered balance reached
+   with a thrust shortfall of up to 1 % of weight (while the verdict required strictly ≥ 0), and did not allow the incidence angle above the stall angle.
+   Because of this SmartBird "did not hold its weight" and Snowbird "did not pull". Now the twist is swept over the whole
+   range, lift is balanced by the secant method, the T = D regime is searched for on the unstalled branch, and strength
+   and peaks are computed only at the regime found (parts do not break during the search trials).
+2. **Flapping power was overstated by a factor of two.** It was computed as a sum of absolute values: braking the wing cost as much
+   as accelerating it. An actuator that brakes a part spends no energy. Now there are two quantities: without recovery of
+   braking energy (sum of the positive parts over the actuators) and with full recovery (signed average over whole
+   cycles — the work done on the air). For the "Dune" ornithopter these are 7,630 and 2,890 MW instead of 12,400 MW. The label
+   "with full recovery" was previously attached to a number that was not that.
+3. **Averages over an incomplete cycle.** Power and lift were averaged over windows of 1 s and 0.5 s — for slow
+   flapping (Snowbird, 0.83 Hz) that is not a whole cycle. Now the windows are multiples of the cycle.
+4. **Snowbird data were guesses even though they are published** (`data/research.md`): wing area 29.2 m²
+   (was 39 m² "so that it holds its weight"), flight mass 114.3 kg, 16 flaps in 19.3 s = 0.83 Hz (was 0.6),
+   pilot power 600–700 W on the power stroke (was 300 W). With the real area the aircraft flies at
+   C_L = 1.24 — right at the stall.
+5. **SmartBird drag** was tuned to the published lift-to-drag ratio L/D ≈ 7 (was ~10).
 
-Что получилось после исправлений:
+What came out after the fixes:
 
-Это результаты квазистационарной модели; после учёта нестационарности числа другие — см. раздел выше.
+These are results of the quasi-steady model; after accounting for unsteadiness the numbers are different — see the section above.
 
-- **SmartBird — «Летает»**: запас тяги 2–6 % веса, на взмах 10,7 Вт без возврата энергии (6,8 Вт с возвратом)
-  против 13 Вт по статье (горизонтальный полёт 4,7 м/с без сервоприводов; с ними 18 Вт): −17 %.
-- **Snowbird — «Летает на пределе»**, как требует ТЗ: тяги не хватает 3,8 Н (9 % сопротивления, 0,34 % веса),
-  мощности хватает только с возвратом энергии (309 Вт; без возврата 700 Вт при 650 Вт). В записи настоящего
-  полёта полная энергия и скорость тоже понемногу падали. Оговорка: размах взмаха не опубликован и взят
-  таким (±3°), чтобы работа за взмах сошлась с оценкой пилота; проверка мощности поэтому зависимая.
+- **SmartBird — "Flies"**: thrust margin 2–6 % of weight, 10.7 W for flapping without energy recovery (6.8 W with recovery)
+  versus 13 W per the paper (level flight at 4.7 m/s without servos; 18 W with them): −17 %.
+- **Snowbird — "Flies at the limit"**, as the spec requires: thrust is short by 3.8 N (9 % of drag, 0.34 % of weight),
+  power suffices only with energy recovery (309 W; without recovery 700 W against 650 W). In the record of the real
+  flight total energy and speed were also slowly decreasing. Caveat: the flapping amplitude is not published and was chosen
+  (±3°) so that the work per flap matches the pilot's estimate; the power check is therefore not independent.
 
-Новые правила вердикта для машущего полёта:
+New verdict rules for flapping flight:
 
-- Нехватка тяги меньше 20 % сопротивления (допуск ТЗ для эталонов) — «на пределе», а не «не взлетает»:
-  точнее модель сопротивление не знает.
-- Если мощности хватает только при возврате энергии торможения крыльев — «на пределе» с объяснением;
-  не хватает даже с возвратом — «не взлетает».
-- Предупреждение о нестационарности: при приведённой частоте k ≥ 0,1 модель установившегося обтекания завышает
-  тягу взмаха — по теории Теодорсена — Гаррика для профиля в 2,1–2,2 раза при k ≈ 0,3. У SmartBird и Snowbird
-  нестационарность теперь учтена (раздел выше); предупреждение осталось для поверхностей без `unsteady`.
+- A thrust shortfall of less than 20 % of drag (the spec's tolerance for reference aircraft) is "at the limit", not "does not fly":
+  the model does not know drag more precisely than that.
+- If power suffices only with recovery of the wings' braking energy — "at the limit" with an explanation;
+  if it is insufficient even with recovery — "does not fly".
+- Unsteadiness warning: at a reduced frequency k ≥ 0.1 the steady-flow model overstates
+  flapping thrust — by Theodorsen–Garrick theory for an airfoil, by a factor of 2.1–2.2 at k ≈ 0.3. For SmartBird and Snowbird
+  unsteadiness is now taken into account (section above); the warning remains for surfaces without `unsteady`.
 
-Известные числовые погрешности (не исправлялись, закрыты проверками):
+Known numerical errors (not fixed, covered by checks):
 
-- Привод по скорости недобирает амплитуду около 1 % при 120 шагах на цикл и около 3 % по мощности при 40
-  шагах на цикл (орнитоптер); уходит с уменьшением шага.
-- Движок считает с одинарной точностью: центр масс махолёта в пустоте за 3,5 с уходит на 5,6 мм при ходе
-  корпуса ±515 мм (1 %); с уменьшением шага ошибка растёт — это округление, а не интегрирование.
+- The velocity-driven actuator falls short of the amplitude by about 1 % at 120 steps per cycle and by about 3 % in power at 40
+  steps per cycle (ornithopter); it goes away as the time step decreases.
+- The engine computes in single precision: the centre of mass of an ornithopter in vacuum drifts by 5.6 mm in 3.5 s with a
+  fuselage travel of ±515 mm (1 %); the error grows as the time step decreases — this is rounding, not integration.
 
-## Этап 6: публикация
+## Stage 6: publication
 
 ```bash
-cp .env.example .env        # ключ ИИ, пароль мониторинга, соль, лимиты
-npm run build               # собрать страницу в dist/
-npm run serve               # сервис целиком: страница, API, хранилище — http://localhost:8139
+cp .env.example .env        # AI key, monitoring password, salt, limits
+npm run build               # build the page into dist/
+npm run serve               # the whole service: page, API, storage — http://localhost:8139
 ```
 
-Сервис — один процесс Node (`src/server/server.ts` → `src/server/app.ts`):
+The service is a single Node process (`src/server/server.ts` → `src/server/app.ts`):
 
-- **Отчёты по постоянным ссылкам.** «Получить ссылку» в отчёте сохраняет на сервере состояние испытания
-  и снимок отчёта (вердикт, причины, телеметрия, прореженные графики — около 20 КБ) и выдаёт короткую
-  ссылку `/r/<номер>`. Без регистрации; на телефоне отчёт показывается сразу из снимка.
-  Снимок присылает браузер автора, поэтому ему не верят на слово: страница зрителя в фоновом потоке
-  повторяет испытание и сверяет отпечаток телеметрии — «результат совпал» или пересчитанный отчёт с
-  предупреждением. Сервер проверяет и состояние (как ссылку от ИИ), и снимок (схема, размеры).
-  Если сервер недоступен, остаётся длинная ссылка с испытанием прямо в адресе (`#r=…`).
-- **Клип** (кнопка «Клип 12 с» в отчёте): испытание пересчитывается, кадры снимаются в нужные моменты
-  модельного времени и проигрываются ровно по 30 в секунду в MediaRecorder — 960×540, MP4 (или WebM,
-  где MP4 не умеют), около 2 МБ. С разрушением: 3 с разгона, 5 с замедленного момента разрушения с меткой,
-  4 с карточки вердикта; без разрушения — всё испытание за 8 с и карточка. Клип скачивается файлом;
-  на сервере не хранится.
-- **Лимиты генерации через ИИ:** на браузер (анонимная cookie, без регистрации) 10 в час и 40 в сутки,
-  на адрес 30 в час, общий дневной бюджет $10. При превышении — сообщение, сколько ждать, и что примеры
-  и правка допущений бесплатны. Отклонённые запросы до ИИ не доходят. Всё настраивается в `.env`.
-- **Мониторинг затрат** — страница `/admin` (пароль `ADMIN_TOKEN`; без него выключена): затраты сегодня
-  и всего против дневного бюджета, генерации по дням (успешные, с картинкой, время), ошибки за неделю,
-  последние 50 генераций, сохранённые отчёты и их просмотры. В журнале нет текста описаний и картинок,
-  адрес — только хэшем с солью.
-- **Два языка** — русский и английский. Переключатель вверху панели, `?lang=en`, иначе язык браузера.
-  Переведено всё, что видит пользователь: интерфейс, вердикт и отчёт (фразы — парами `tr('…', '…')`
-  в `src/core`), названия аппаратов, деталей, допущений и материалов (словарь `src/core/i18n-data.ts`).
-  ИИ отвечает на языке интерфейса. Отчёт, сохранённый на одном языке, у зрителя на другом показывается
-  пересчитанным на его языке (отпечаток телеметрии от языка не зависит).
-  По-русски остались: сообщения проверки спецификации при ошибке, вывод командной строки, `/admin`.
-- **Галерея примеров** — шесть эталонных аппаратов на экране «Ввод» (с этапа 4); они не обращаются к ИИ.
-- **Хранилище** — встроенный в Node SQLite, один файл (`DB_PATH`, по умолчанию `var/stand.db`).
-  В ТЗ записаны PostgreSQL и объектное хранилище: для одного узла этого не нужно, клипы и картинки на
-  сервере не хранятся вовсе. При росте — перенос таблиц `reports` и `generations` в PostgreSQL.
-- **Безопасность:** заголовки CSP (только свой источник, `wasm-unsafe-eval` для Rapier), запрет фреймов,
-  nosniff; выход за папку `dist/` закрыт; ключ ИИ — только на сервере и только из `.env`/окружения.
-- **Развёртывание:** `Dockerfile` — один контейнер, данные на томе `/data`, порт 8080, проверка
-  здоровья `/api/health`, `TRUST_PROXY=1` (за обратным прокси с HTTPS).
+- **Reports via permanent links.** "Get link" in a report saves the test state and a snapshot of the report
+  on the server (verdict, reasons, telemetry, thinned-out charts — about 20 KB) and returns a short
+  link `/r/<number>`. No registration; on a phone the report is shown immediately from the snapshot.
+  The snapshot is sent by the author's browser, so it is not taken on trust: the viewer's page re-runs the test in a background thread
+  and compares the telemetry fingerprint — "result matches" or a recomputed report with
+  a warning. The server validates both the state (like a link from the AI) and the snapshot (schema, sizes).
+  If the server is unavailable, a long link with the test embedded right in the address (`#r=…`) remains.
+- **Clip** (the "Clip 12 s" button in a report): the test is recomputed, frames are captured at the required moments
+  of model time and played at exactly 30 per second into MediaRecorder — 960×540, MP4 (or WebM
+  where MP4 is not supported), about 2 MB. With a breakup: 3 s of run-up, 5 s of the slowed-down moment of breakup with a marker,
+  4 s of the verdict card; without a breakup — the whole test in 8 s plus the card. The clip is downloaded as a file;
+  it is not stored on the server.
+- **AI generation limits:** per browser (anonymous cookie, no registration) 10 per hour and 40 per day,
+  per address 30 per hour, total daily budget $10. When exceeded — a message saying how long to wait and that examples
+  and editing assumptions are free. Rejected requests never reach the AI. Everything is configured in `.env`.
+- **Cost monitoring** — the `/admin` page (password `ADMIN_TOKEN`; disabled without it): costs today
+  and in total against the daily budget, generations by day (successful, with an image, time), errors over the week,
+  the last 50 generations, saved reports and their views. The log contains no description text or images,
+  the address is stored only as a salted hash.
+- **Two languages** — Russian and English. A switch at the top of the panel, `?lang=en`, otherwise the browser language.
+  Everything the user sees is translated: the interface, the verdict and the report (phrases as pairs `tr('…', '…')`
+  in `src/core`), names of aircraft, parts, assumptions and materials (dictionary `src/core/i18n-data.ts`).
+  The AI answers in the interface language. A report saved in one language is shown to a viewer in another
+  recomputed in the viewer's language (the telemetry fingerprint does not depend on the language).
+  Still in Russian only: specification validation messages on error, command-line output, `/admin`.
+- **Example gallery** — six reference aircraft on the "Input" screen (since stage 4); they do not call the AI.
+- **Storage** — the SQLite built into Node, a single file (`DB_PATH`, default `var/stand.db`).
+  The spec calls for PostgreSQL and object storage: for a single node this is unnecessary, and clips and images are
+  not stored on the server at all. If it grows — move the `reports` and `generations` tables to PostgreSQL.
+- **Security:** CSP headers (own origin only, `wasm-unsafe-eval` for Rapier), framing forbidden,
+  nosniff; escaping the `dist/` folder is blocked; the AI key lives only on the server and only from `.env`/the environment.
+- **Deployment:** `Dockerfile` — a single container, data on the `/data` volume, port 8080, health
+  check `/api/health`, `TRUST_PROXY=1` (behind a reverse proxy with HTTPS).
 
-Найдено по ходу:
-- Без `ANTHROPIC_API_KEY` SDK брал учётные данные из профиля пользователя (исправлено на этапе 5).
-- Node не ходит через `HTTPS_PROXY` сам — клиент ИИ теперь ходит через прокси, если он задан.
+Found along the way:
+- Without `ANTHROPIC_API_KEY` the SDK picked up credentials from the user profile (fixed in stage 5).
+- Node does not go through `HTTPS_PROXY` on its own — the AI client now goes through the proxy if one is set.
 
-Приёмка этапа 6:
+Stage 6 acceptance:
 
-| Критерий | Как проверено | Итог |
+| Criterion | How verified | Result |
 | --- | --- | --- |
-| Ссылка на отчёт открывается без регистрации на компьютере и телефоне | Локальная рабочая сборка (`npm run serve`), встроенный браузер, ширина 1400 и 375 px; русская ссылка открыта и по-английски | выполнено локально: отчёт сразу, повторный расчёт у зрителя за 1,7 с совпал |
-| Превышение лимита — понятное сообщение; затраты видны в мониторинге | `npm run check`: лимит на браузер, дневной бюджет (ru/en), запросы до ИИ не доходят, `/admin` без пароля закрыт, затраты в мониторинге | выполнено |
-| Все проверки раздела 12 пройдены на развёрнутом сервисе | — | **не выполнено**: сервис не развёрнут (нужен хостинг). Локально после проверки физики все проверки раздела 12 проходят |
+| A report link opens without registration on a computer and a phone | Local production build (`npm run serve`), built-in browser, widths 1400 and 375 px; a Russian link was also opened in English | done locally: report shown immediately, the viewer's recomputation in 1.7 s matched |
+| Exceeding a limit gives a clear message; costs are visible in monitoring | `npm run check`: per-browser limit, daily budget (ru/en), requests do not reach the AI, `/admin` without a password is closed, costs in monitoring | done |
+| All checks of section 12 pass on the deployed service | — | **not done**: the service is not deployed (hosting is needed). Locally, after the physics verification, all checks of section 12 pass |
 
-Не проверено: `Dockerfile` не собирался — на этом компьютере не запущен Docker Desktop. Частота кадров,
-Firefox и Safari — как на этапе 4. Клип проверен в Chromium (MP4); в Safari и Firefox не запускался.
+Not verified: the `Dockerfile` was not built — Docker Desktop is not running on this computer. Frame rate,
+Firefox and Safari — as in stage 4. The clip was checked in Chromium (MP4); it was not run in Safari or Firefox.
 
 
-## Этап 5: генерация по картинке
+## Stage 5: generation from an image
 
 ```bash
-npm run make-image-cases   # нарисовать проверочный набор: data/image-cases/*.png и data/image-cases.json
-npm run image-eval         # прогнать набор через настоящий ИИ — нужен ANTHROPIC_API_KEY, стоит денег (~$2)
+npm run make-image-cases   # draw the test set: data/image-cases/*.png and data/image-cases.json
+npm run image-eval         # run the set through the real AI — needs ANTHROPIC_API_KEY, costs money (~$2)
 ```
 
-Сценарий Б: на экране «Ввод» картинку можно перетащить, вставить из буфера или выбрать файлом
-(JPEG, PNG, WebP до 10 МБ) и при желании дописать уточнение текстом.
+Scenario B: on the "Input" screen an image can be dragged in, pasted from the clipboard, or chosen as a file
+(JPEG, PNG, WebP up to 10 MB), optionally with a clarification added as text.
 
-- **В браузере** картинка проверяется (открывается ли, не меньше 64 px), уменьшается до 1568 px
-  по длинной стороне и пересжимается в JPEG. Метаданные (координаты съёмки и т. п.) при этом пропадают.
-  Картинка уходит только ИИ: на сервере не сохраняется и не пишется в журнал, в отчёт и ссылку не попадает.
-- **На сервере** (`src/server/image.ts`) тип определяется по сигнатуре файла, а не по заявленному;
-  размеры читаются из заголовка PNG, JPEG (маркер SOF) или WebP (VP8, VP8L, VP8X). Отказ: не картинка,
-  тип не совпадает с заявленным, меньше 64 px, больше 8000 px или больше 5 МБ.
-- **ИИ** (`src/server/generate.ts`) получает картинку в обоих запросах. В разборе он заполняет блок
-  `image`: вид, **эталон масштаба** (размерная линия или сетка с подписью, человек 1,8 м, автомобиль 4,5 м,
-  дверь 2 м, узнаваемая техника, размер из текста или «нет»), число крыльев, несущих и воздушных винтов,
-  лопастей, снятые размеры и что не видно. В проекте размеры с картинки идут с `origin: "image"`
-  и с названным эталоном. Картинка без летательного аппарата отклоняется с объяснением.
-  Надписи на картинке считаются данными, указаний в них ИИ не выполняет.
-- **На экране допущений** блок «По картинке»: вид, эталон масштаба, что посчитано, что снято, что оценено.
-  У допущений с картинки подпись «С картинки: …».
+- **In the browser** the image is checked (whether it opens, at least 64 px), downscaled to 1568 px
+  on the long side and re-encoded as JPEG. Metadata (shooting coordinates, etc.) is stripped in the process.
+  The image goes only to the AI: it is not saved on the server or written to the log, and it does not end up in the report or the link.
+- **On the server** (`src/server/image.ts`) the type is determined by the file signature, not by the declared one;
+  dimensions are read from the PNG, JPEG (SOF marker) or WebP (VP8, VP8L, VP8X) header. Rejected: not an image,
+  type does not match the declared one, smaller than 64 px, larger than 8000 px or more than 5 MB.
+- **The AI** (`src/server/generate.ts`) receives the image in both requests. In the analysis it fills in the
+  `image` block: view, **scale reference** (a dimension line or a labelled grid, a person 1.8 m, a car 4.5 m,
+  a door 2 m, recognisable equipment, a size from the text, or "none"), number of wings, rotors and propellers,
+  blades, measured dimensions and what is not visible. In the design, dimensions from the image carry `origin: "image"`
+  and the named reference. An image without an aircraft is rejected with an explanation.
+  Text in the image is treated as data; the AI does not follow instructions in it.
+- **On the assumptions screen** there is a "From image" block: view, scale reference, what was computed, what was measured, what was estimated.
+  Assumptions from the image are labelled "From image: …".
 
-Проверочный набор — 15 изображений (`src/tools/image-cases.ts`, рисует `src/tools/draw.ts`): 13 аппаратов
-(самолёты с 1, 2 и 4 винтами, вертолёты с 2, 3 и 5 лопастями, мульти­коптеры с 4, 6 и 8 винтами, махолёты
-с 1 и 4 парами крыльев) в видах сверху, сбоку и спереди, в трёх стилях (чертёж, силуэт, синька), с эталоном
-масштаба (человек, размерная линия, сетка) и без него; плюс стул и дом с деревом. Рисунки сделаны по
-заданным размерам, поэтому разметка точная, а чужих изображений в наборе нет. Это рисунки, а не
-фотографии: на фото с перспективой ИИ ошибается чаще, и этот набор этого не проверяет.
+The test set is 15 images (`src/tools/image-cases.ts`, drawn by `src/tools/draw.ts`): 13 aircraft
+(airplanes with 1, 2 and 4 propellers, helicopters with 2, 3 and 5 blades, multicopters with 4, 6 and 8 rotors, ornithopters
+with 1 and 4 pairs of wings) in top, side and front views, in three styles (drawing, silhouette, blueprint), with a scale
+reference (person, dimension line, grid) and without one; plus a chair and a house with a tree. The drawings are made to
+given dimensions, so the ground truth is exact, and there are no third-party images in the set. These are drawings, not
+photographs: on photos with perspective the AI errs more often, and this set does not test that.
 
-Приёмка этапа 5:
+Stage 5 acceptance:
 
-| Критерий | Как проверяется | Итог |
+| Criterion | How it is checked | Result |
 | --- | --- | --- |
-| ≥ 12 из 15 изображений — верный класс и число крыльев или винтов | `npm run image-eval` | **14 из 15** — выполнено |
-| Пропорции основных деталей — в пределах 25 % от разметки | `npm run image-eval`: размах/длина, хорда/размах, диаметр винта/длина кабины, плечо/радиус, длина крыла/длина корпуса | **15 из 15**, наибольшее отклонение 8 % — выполнено |
-| Изображение без транспорта отклоняется с объяснением | `npm run image-eval` (стул, дом) и `npm run check` с подставным ИИ | оба отклонены с описанием того, что на рисунке, — выполнено |
+| ≥ 12 of 15 images — correct class and number of wings or rotors | `npm run image-eval` | **14 of 15** — done |
+| Proportions of the main parts — within 25 % of the ground truth | `npm run image-eval`: span/length, chord/span, propeller diameter/cabin length, arm/radius, wing length/fuselage length | **15 of 15**, largest deviation 8 % — done |
+| An image without a vehicle is rejected with an explanation | `npm run image-eval` (chair, house) and `npm run check` with a mock AI | both rejected with a description of what is in the picture — done |
 
-Прогон на Claude Opus 5.5, 2026-11-11 (результаты — `data/image-eval-last.json`):
+Run on Claude Opus 5.5, 2026-11-11 (results in `data/image-eval-last.json`):
 
-- Эталон масштаба ИИ выбрал правильно во всех случаях: размерная линия, сетка, фигура человека; где эталона
-  нет — сказал об этом и оценил по типу аппарата. Абсолютные размеры при эталоне — в пределах 5 %.
-- Промах один: махолёт, нарисованный спереди, с подписью «Мускулолёт», ИИ собрал как самолёт с винтом,
-  по образцу Daedalus и Gossamer Albatross. Спереди машущее крыло не отличить от неподвижного, а
-  мускулолёты чаще всего самолёты, так что это скорее неудачный случай в наборе, чем ошибка ИИ.
-  Разметку под результат не меняли.
-- **Время генерации.** Первый прогон: 32–59 с при требовании ТЗ «не дольше 30 с». Замер по шагам
-  показал, что медленные случаи шли с кругом исправления: ИИ вносил в допущения нечисловые поля
-  (material, highWing), проверка отклоняла проект, и шёл повторный запрос на 17–19 с. Теперь такие записи
-  отбрасываются до проверки (`normalizeDesign`), а шаг проекта идёт с effort low вместо medium
-  (~2 200 выходных токенов вместо ~3 100). Второй прогон: **23–31 с**, кругов исправления нет, точность
-  та же (14 из 15, пропорции 15 из 15). В 30 с не уложились 2 случая из 15 — 30 и 31 с; прогон шёл
-  по 4 запроса одновременно.
-- Стоимость: первый прогон $2,01, второй $1,46 ($0,08–0,18 за картинку).
-- Найдено и исправлено: ошибка сети засчитывалась как «отклонено с объяснением»; объяснение отказа
-  повторяло фразу «На изображении нет летательного аппарата» дважды.
-- Node, в отличие от curl, не читает переменную HTTPS_PROXY. Клиент ИИ (`src/server/client.ts`) теперь
-  ходит через прокси, если тот задан: это нужно за корпоративным прокси и в изолированной среде.
+- The AI chose the scale reference correctly in all cases: dimension line, grid, human figure; where there is no
+  reference, it said so and estimated from the aircraft type. Absolute dimensions with a reference are within 5 %.
+- One miss: an ornithopter drawn from the front, captioned "Human-powered aircraft", was assembled by the AI as a propeller airplane,
+  modelled on Daedalus and Gossamer Albatross. From the front a flapping wing cannot be distinguished from a fixed one, and
+  human-powered aircraft are most often airplanes, so this is more a poor case in the set than an AI error.
+  The ground truth was not changed to fit the result.
+- **Generation time.** First run: 32–59 s against the spec requirement of "no longer than 30 s". A per-step timing
+  showed that the slow cases went through a correction round: the AI put non-numeric fields into the assumptions
+  (material, highWing), validation rejected the design, and a repeat request of 17–19 s followed. Now such entries
+  are discarded before validation (`normalizeDesign`), and the design step runs with effort low instead of medium
+  (~2,200 output tokens instead of ~3,100). Second run: **23–31 s**, no correction rounds, same
+  accuracy (14 of 15, proportions 15 of 15). 2 cases of 15 did not fit in 30 s — 30 and 31 s; the run went
+  with 4 requests at a time.
+- Cost: first run $2.01, second $1.46 ($0.08–0.18 per image).
+- Found and fixed: a network error was counted as "rejected with an explanation"; the rejection explanation
+  repeated the phrase "There is no aircraft in the image" twice.
+- Node, unlike curl, does not read the HTTPS_PROXY variable. The AI client (`src/server/client.ts`) now
+  goes through the proxy if one is set: this is needed behind a corporate proxy and in an isolated environment.
 
-Без обращения к ИИ `npm run check` проверяет: заголовки PNG/JPEG/WebP, отказы (подделка типа, не
-картинка, 20×20, больше 5 МБ), что картинка уходит первым блоком в оба запроса, отказ «нет летательного
-аппарата», и саму оценку по разметке (точный проект проходит, лишняя лопасть и радиус +43 % — нет).
+Without calling the AI, `npm run check` verifies: PNG/JPEG/WebP headers, rejections (spoofed type, not
+an image, 20×20, more than 5 MB), that the image goes as the first block in both requests, the "no aircraft"
+rejection, and the ground-truth scoring itself (an exact design passes, an extra blade and radius +43 % do not).
 
-Найдено при проверке: без `ANTHROPIC_API_KEY` SDK сам находил учётные данные в профиле пользователя
-(`%APPDATA%\Anthropic\credentials`) и пытался ими воспользоваться. Теперь сервер и скрипты оценки создают
-клиент только при ключе, заданном явно; ошибка учётных данных даёт ответ «ключ ИИ не принят», а не 500.
+Found during verification: without `ANTHROPIC_API_KEY` the SDK found credentials in the user profile on its own
+(`%APPDATA%\Anthropic\credentials`) and tried to use them. Now the server and the evaluation scripts create
+the client only with an explicitly set key; a credentials error gives the response "AI key not accepted" instead of a 500.
 
-## Этап 4: интерфейс и отчёт
+## Stage 4: interface and report
 
 ```bash
-npm run dev                                          # стенд: четыре экрана сценария А
-npm run report -- ornithopter tethered --influence   # тот же отчёт в командной строке
+npm run dev                                          # stand: the four screens of scenario A
+npm run report -- ornithopter tethered --influence   # the same report on the command line
 ```
 
-Четыре экрана повторяют сценарий А (ТЗ, раздел 8):
+The four screens follow scenario A (spec, section 8):
 
-1. **Ввод** — описание для ИИ или пример из галереи (шесть эталонных аппаратов и всё, что собрано по описанию).
-2. **Допущения** — сводка (масса, мощность, экипаж, центр масс), ползунки: сначала наименее надёжные,
-   у каждого метка уверенности и обоснование, «↺ исходное» у изменённых и «вернуть все исходные оценки».
-   Материал и высота — здесь же. Модель пересобирается без обращения к ИИ.
-3. **Стенд** — программа и её условия (крейсер, скорость потока), пуск/пауза, «К итогу» (досчитать без
-   замедления), замедление до 1/100, камера: следить / свободная / из кабины, векторы сил (подъёмная сила,
-   тяга, сопротивление, вес, сглажены по периоду привода), карта запаса прочности, метка места первого
-   разрушения, **повтор разрушения** (0,8 с до и 0,5 с после, не реже 400 кадров в секунду модельного времени).
-4. **Отчёт** — вердикт и время решающего события, до трёх причин с числами и пределами, ориентиры
-   (мощность в сравнении с двигателями, перегрузка — с пилотом истребителя), предупреждения о границах
-   модели, три допущения, сильнее всего влияющие на исход, обратная задача, графики (запас прочности,
-   подъёмная сила / вес, мощность), таблица телеметрии с пределами, все допущения испытания и оговорка
-   об оценочном характере. Телеметрия выгружается в CSV (не реже 20 точек на период привода).
+1. **Input** — a description for the AI or an example from the gallery (six reference vehicles and everything built from a description).
+2. **Assumptions** — a summary (mass, power, crew, center of mass), sliders: least reliable first,
+   each with a confidence label and a rationale, "↺ original" on changed ones and "restore all original estimates".
+   Material and altitude are here too. The model is rebuilt without calling the AI.
+3. **Stand** — the program and its conditions (cruise, flow speed), run/pause, "To result" (finish computing without
+   slow motion), slow motion down to 1/100, camera: follow / free / cockpit, force vectors (lift,
+   thrust, drag, weight, smoothed over the drive period), a safety-margin map, a marker at the point of first
+   failure, **failure replay** (0.8 s before and 0.5 s after, at no less than 400 frames per second of model time).
+4. **Report** — the verdict and the time of the decisive event, up to three causes with numbers and limits, reference points
+   (power compared with engines, load factor compared with a fighter pilot), warnings about the limits of the
+   model, the three assumptions with the strongest influence on the outcome, the inverse problem, charts (safety margin,
+   lift / weight, power), a telemetry table with limits, all test assumptions and a disclaimer
+   that the results are estimates. Telemetry is exported to CSV (at least 20 points per drive period).
 
-Устройство:
+Structure:
 
-- `src/core/report.ts` — отчёт как чистая функция от результата испытания: одинаков в браузере и в Node.
-- `src/core/sensitivity.ts` — влияние допущений: каждое по очереди +10 %, прогон без разрушения,
-  сравниваются запас прочности, доля нужной мощности и подъёмная сила. У орнитоптера — 8 прогонов за ~20 с.
-- `src/web/worker.ts` — влияние допущений и обратная задача считаются в фоновом потоке, страница не замирает.
-- `src/core/vehicle.ts` — испытание как переносимое состояние. **Ссылка** «Скопировать ссылку» несёт его
-  целиком (после `#`), включая проект от ИИ: испытание повторяется в браузере того, кто её открыл,
-  без сервера. Состояние из ссылки проверяется так же, как ответ ИИ. Постоянные короткие ссылки с хранением
-  и видеоклип — этап 6.
+- `src/core/report.ts` — the report as a pure function of the test result: identical in the browser and in Node.
+- `src/core/sensitivity.ts` — influence of assumptions: each in turn +10 %, a run without failure,
+  comparing safety margin, fraction of required power and lift. For the ornithopter — 8 runs in ~20 s.
+- `src/web/worker.ts` — the influence of assumptions and the inverse problem are computed in a background thread, so the page does not freeze.
+- `src/core/vehicle.ts` — the test as portable state. The **link** "Copy link" carries all of it
+  (after `#`), including the AI-generated design: the test is replayed in the browser of whoever opens it,
+  without a server. State from a link is validated the same way as an AI response. Permanent short links with storage
+  and a video clip — stage 6.
 
-Приёмка этапа 4:
+Stage 4 acceptance:
 
-| Критерий | Как проверено | Итог |
+| Criterion | How it was checked | Result |
 | --- | --- | --- |
-| Все числа в тексте вердикта есть в телеметрии | `npm run check`: 9 испытаний, причины + предупреждения + время события | выполнено |
-| Вердикт по одной спецификации совпадает в браузерах | 6 эталонных испытаний в Node 22 и Chromium 152 (встроенный браузер приложения) | вердикты совпали; числа расходятся в 15–16-м знаке, отпечаток по 12 знакам совпал. Firefox и Safari не проверены |
-| Три человека без подсказок проходят сценарий А за 2 минуты | нужны живые люди | не проверено; сценарий пройден мной, см. ниже |
+| Every number in the verdict text is present in the telemetry | `npm run check`: 9 tests, causes + warnings + event time | done |
+| The verdict for one specification matches across browsers | 6 reference tests in Node 22 and Chromium 152 (the app's built-in browser) | verdicts matched; numbers differ in the 15th–16th digit, the 12-digit fingerprint matched. Firefox and Safari not checked |
+| Three people with no hints complete scenario A within 2 minutes | requires real people | not checked; I walked through the scenario myself, see below |
 
-Сценарий А для орнитоптера во встроенном браузере: карточка в галерее → экран допущений (модель и сводка
-сразу на сцене) → «К стенду →» → «Пуск» (крылья ломаются на 0,465 с модельного времени, видно при замедлении
-в 10 раз) → «Отчёт →». Это пять нажатий; досчёт 5 с испытания занимает ~2 с, влияние допущений приходит
-в отчёт через ~20 с из фонового потока. Ссылка `#r=…` открывает стенд, сама досчитывает испытание
-и показывает отчёт.
+Scenario A for the ornithopter in the built-in browser: gallery card → assumptions screen (model and summary
+immediately on the scene) → "To stand →" → "Run" (the wings break at 0.465 s of model time, visible at 10×
+slow motion) → "Report →". That is five clicks; finishing the 5 s test takes ~2 s, the influence of assumptions arrives
+in the report after ~20 s from the background thread. A `#r=…` link opens the stand, computes the test by itself
+and shows the report.
 
-Сверка между средами: в консоли страницы `__stand.repro()` — 6 эталонных испытаний с вердиктами
-и отпечатками; `npm run check` печатает отпечатки Node для сравнения.
+Cross-environment check: in the page console `__stand.repro()` — 6 reference tests with verdicts
+and fingerprints; `npm run check` prints the Node fingerprints for comparison.
 
-Не сделано или не проверено на этапе 4:
+Not done or not checked in stage 4:
 
-- Частота кадров не измерена: панель браузера во время проверки была скрыта, страница шла как фоновая.
-- Firefox и Safari не запускались. Последние биты чисел в разных движках JS расходятся, вердикты
-  на проверенных испытаниях от этого не меняются.
-- Сравнение двух отчётов рядом (сценарий Г), видеоклип, постоянные короткие ссылки, английский
-  интерфейс — в ТЗ они на этапе 6 или вне состава этапа 4.
-- Векторы сил разложены упрощённо: подъёмная сила — вертикальная составляющая всей аэродинамики,
-  тяга и сопротивление — составляющие вдоль курса, сложенные по деталям со своим знаком.
+- Frame rate not measured: the browser pane was hidden during the check, and the page ran as a background page.
+- Firefox and Safari were not run. The last bits of numbers differ between JS engines; the verdicts
+  on the tests checked do not change because of it.
+- Side-by-side comparison of two reports (scenario D), video clip, permanent short links, English
+  interface — in the spec these are in stage 6 or outside the scope of stage 4.
+- Force vectors are decomposed in a simplified way: lift is the vertical component of the total aerodynamics,
+  thrust and drag are the along-heading components, summed over parts with their own sign.
 
-## Этап 3: машущие крылья, упругость, обратная задача
+## Stage 3: flapping wings, elasticity, inverse problem
 
 ```bash
-npm run stand -- snowbird free                   # махолёт в свободном полёте
-npm run stand -- snowbird tunnel                 # махолёт в аэродинамической трубе
+npm run stand -- snowbird free                   # ornithopter in free flight
+npm run stand -- snowbird tunnel                 # ornithopter in a wind tunnel
 npm run stand -- smartbird tunnel --wind 6
-npm run stand -- ornithopter tethered --inverse  # что нужно, чтобы заработало
+npm run stand -- ornithopter tethered --inverse  # what it takes to make it work
 ```
 
-- **Программа `tunnel`**: аппарат закреплён по высоте и курсу, на него дует поток со скоростью крейсера
-  (`limits.cruiseSpeed` или `--wind`). Автопилот перебирает закручивание крыла, для каждого уравнивает
-  подъёмную силу с весом углом установки, находит режим «тяга = сопротивление» и меряет на нём три цикла
-  (подробности — в разделе «Проверка физики»).
-- **Эталоны махолётов** (`src/presets/flappers.ts`): Festo SmartBird (0,48 кг, 13–23 Вт) и UTIAS
-  Snowbird (мускулолёт 2010 г., 600–700 Вт на рабочем ходе). У крыла — синусоидальная закрутка, линейная по размаху.
-- **Упругость крыла**: первая собственная частота изгиба консоли
-  f₁ = (1,875²/2π)·√(EI/(μL⁴)), у лопастей — с центробежным ужесточением (Саутуэлл). Нагрузки пропускаются
-  через резонатор первой формы (демпфирование 3 %), берётся большее из упругого и жёсткого отклика.
-  Если привод быстрее f₁, вердикт предупреждает: модель жёсткого крыла неприменима.
-- **Обратная задача** (`src/core/inverse.ts`, кнопка «Решить обратную задачу» на стенде): прогон без
-  разрушения → во сколько раз прочнее и жёстче нужен материал при той же плотности (запасы пропорциональны
-  прочности или модулю), проверочный прогон с таким материалом (до двух уточнений), нужная мощность
-  (без возврата энергии разгона крыльев и с полным возвратом), какие материалы библиотеки подошли бы,
-  и что материалом не исправить (сверхзвук, резонанс, нехватка подъёмной силы, тяга < сопротивления).
+- **The `tunnel` program**: the vehicle is fixed in altitude and heading, and a flow at cruise speed blows on it
+  (`limits.cruiseSpeed` or `--wind`). The autopilot sweeps wing twist, for each one balances
+  lift against weight with the incidence angle, finds the "thrust = drag" condition and measures three cycles at it
+  (details in the "Physics check" section).
+- **Ornithopter references** (`src/presets/flappers.ts`): Festo SmartBird (0.48 kg, 13–23 W) and UTIAS
+  Snowbird (human-powered aircraft of 2010, 600–700 W on the power stroke). The wing has sinusoidal twist, linear along the span.
+- **Wing elasticity**: first natural bending frequency of the cantilever
+  f₁ = (1.875²/2π)·√(EI/(μL⁴)), for blades — with centrifugal stiffening (Southwell). Loads are passed
+  through a first-mode resonator (3 % damping), and the larger of the elastic and rigid responses is taken.
+  If the drive is faster than f₁, the verdict warns: the rigid-wing model is not applicable.
+- **Inverse problem** (`src/core/inverse.ts`, the "Solve inverse problem" button on the stand): a run without
+  failure → how many times stronger and stiffer the material must be at the same density (margins are proportional
+  to strength or modulus), a verification run with that material (up to two refinements), required power
+  (without recovering the wing acceleration energy and with full recovery), which library materials would work,
+  and what material cannot fix (supersonic flow, resonance, lack of lift, thrust < drag).
 
-### Орнитоптер «Дюны» (результат)
+### "Dune" ornithopter (result)
 
-Вердикт — «Разрушается»: потеря устойчивости стенки лонжерона, запас 0,001. Обратная задача (7–10 с):
-нужен материал в ~2 640 раз прочнее и жёстче однонаправленного углепластика — такого нет даже среди
-теоретических: потерю устойчивости решает модуль упругости, а он у графена и нанотрубок выше
-углепластика лишь в ~7 раз. Проверка с таким материалом
-даёт запас 1,5, но аппарат всё равно «Не взлетает»: нужно ~7 630 МВт (2 890 МВт с полным возвратом
-энергии торможения крыльев) при 5 МВт. Материалом не исправить: законцовки идут на M 1,8, привод 20 Гц в 9 раз быстрее
-собственной частоты крыла (2,2 Гц).
+Verdict — "Breaks up": spar wall buckling, margin 0.001. Inverse problem (7–10 s):
+it needs a material ~2,640 times stronger and stiffer than unidirectional carbon fiber — no such material exists even among
+theoretical ones: buckling is governed by the elastic modulus, and for graphene and nanotubes it is higher than
+carbon fiber's only by ~7 times. A check with such a material
+gives a margin of 1.5, but the vehicle still "Does not fly": it needs ~7,630 MW (2,890 MW with full recovery
+of wing deceleration energy) against 5 MW. Material cannot fix it: the wingtips reach M 1.8, the 20 Hz drive is 9 times faster than
+the wing's natural frequency (2.2 Hz).
 
-## Этап 2: сборка по описанию
+## Stage 2: building from a description
 
 ```bash
-# ключ — в файле .env (образец .env.example) или в переменной окружения; в браузер не попадает
-npm run api                    # сервер генерации, порт 8139
-npm run dev                    # стенд; /api проксируется на сервер
-npm run gen-eval               # проверка на 20 описаниях — обращается к ИИ, стоит денег
+# key — in the .env file (template .env.example) or in an environment variable; it never reaches the browser
+npm run api                    # generation server, port 8139
+npm run dev                    # stand; /api is proxied to the server
+npm run gen-eval               # check on 20 descriptions — calls the AI, costs money
 ```
 
-Как устроено (`src/server/generate.ts`, `src/core/design.ts`):
+How it works (`src/server/generate.ts`, `src/core/design.ts`):
 
-1. **Разбор** (Claude Opus 5.5, effort low): летательный ли это аппарат, класс, части, что задал пользователь, что известно о реальной технике или из первоисточника.
-2. **Проект** (effort medium): ИИ заполняет компактный «проект аппарата» по строгой схеме — размеры, массы, материал, мощность и список допущений. Координаты деталей он не расставляет.
-3. **Сборщик** раскладывает детали, шарниры, приводы и органы управления — так же, как собраны эталонные пресеты. Конусность лопастей и начальный шаг винта считаются, а не угадываются.
-4. **Проверка** проекта и спецификации; при нарушениях их список возвращается ИИ на исправление, не больше двух раз.
+1. **Analysis** (Claude Opus 5.5, effort low): whether it is an aircraft, its class, parts, what the user specified, what is known about the real machine or from a primary source.
+2. **Design** (effort medium): the AI fills in a compact "vehicle design" following a strict schema — dimensions, masses, material, power and a list of assumptions. It does not place part coordinates.
+3. **The builder** lays out parts, joints, actuators and controls — the same way the reference presets are built. Blade coning and initial propeller pitch are computed, not guessed.
+4. **Validation** of the design and the specification; on violations, the list is returned to the AI for correction, no more than twice.
 
-На стенде ползунки допущений правят проект, спецификация пересобирается. Резервная модель при отказе включена
-(`fallbacks: "default"`). Описание пользователя — только данные: указания внутри него ИИ не выполняет.
-Ограничение — 30 генераций в час с адреса; правка допущений и запуски бесплатны.
+On the stand, the assumption sliders edit the design and the specification is rebuilt. A fallback model on failure is enabled
+(`fallbacks: "default"`). The user's description is data only: the AI does not follow instructions inside it.
+Limit — 30 generations per hour per address; editing assumptions and running tests are free.
 
-Аппарат описывается спецификацией (JSON по схеме `src/core/spec.ts`), стенд собирает из неё
-физическую модель, гоняет по программе испытаний и выносит вердикт по правилам ТЗ.
+A vehicle is described by a specification (JSON following the schema in `src/core/spec.ts`); the stand builds
+a physical model from it, runs it through a test program and issues a verdict according to the rules of the spec.
 
-## Запуск
+## Running
 
 ```bash
 npm install
-npm run dev          # страница стенда: http://localhost:8137
-npm run check        # проверка ядра: формулы, эталоны, отрицательные примеры
-npm run stand -- cessna172 flight                       # испытание из командной строки
+npm run dev          # stand page: http://localhost:8137
+npm run check        # core check: formulas, references, negative examples
+npm run stand -- cessna172 flight                       # test from the command line
 npm run stand -- cessna172 flight --altitude 2438 --cruise 63.8
 npm run stand -- r22 hover --material spruce
 npm run stand -- ornithopter tethered --set "actuators[flap].freqHz=2"
 npm run typecheck
 ```
 
-Аппараты: `ornithopter`, `cessna172`, `r22`, `quadcopter`, `smartbird`, `snowbird` или путь к своему JSON.
-Программы: `tethered` (привязной стенд), `hover` (взлёт и висение 10 с), `flight` (разбег,
-полёт, торможение до сваливания), `tunnel` (машущие крылья в потоке), `free` (свободный полёт махолёта), `max` (предельный режим; у самолёта — манёвр с расчётной перегрузкой).
+Vehicles: `ornithopter`, `cessna172`, `r22`, `quadcopter`, `smartbird`, `snowbird` or a path to your own JSON.
+Programs: `tethered` (tethered stand), `hover` (takeoff and 10 s hover), `flight` (takeoff roll,
+flight, slowdown to stall), `tunnel` (flapping wings in a flow), `free` (free flight of an ornithopter), `max` (limit condition; for an airplane — a maneuver at the design load factor).
 
-## Что считается
+## What is computed
 
-| Слой | Модель |
+| Layer | Model |
 | --- | --- |
-| Динамика | Rapier: жёстко соединённые детали свариваются в одно тело, поворотные шарниры — отдельные тела; приводы работают по скорости |
-| Аэродинамика | По сечениям: весь круг углов атаки (срыв, обратное обтекание), поправка Прандтля — Глауэрта до M 0,7; крыло — индуктивный скос по теории несущей линии; винт — импульсная теория с динамическим потоком и концевыми потерями; присоединённая масса воздуха у машущих крыльев; воздушный винт самолёта — импульсная теория диска |
-| Прочность | По станциям вдоль размаха: растяжение и сжатие раздельно, местная потеря устойчивости каждой стенки коробки (у композитов — с поперечным модулем), срез и кручение (формула Бредта), текучесть металлов, усталость по худшему углу сечения (Баскин + Гудман) |
-| Экипаж | Ускорение в каждом кресле: длительная перегрузка, удар, вибрация в полосе 2–16 Гц |
-| Мощность | На валах шарниров по моменту и скорости, потери трансмиссии и хвостового винта, падение мощности поршневого мотора с высотой |
+| Dynamics | Rapier: rigidly connected parts are welded into one body, revolute joints are separate bodies; actuators are velocity-driven |
+| Aerodynamics | Per section: the full range of angles of attack (stall, reverse flow), Prandtl–Glauert correction up to M 0.7; wing — induced downwash from lifting-line theory; rotor — momentum theory with dynamic inflow and tip losses; added air mass for flapping wings; airplane propeller — actuator disk momentum theory |
+| Strength | At stations along the span: tension and compression separately, local buckling of each box wall (for composites — with the transverse modulus), shear and torsion (Bredt formula), yielding of metals, fatigue at the worst corner of the section (Basquin + Goodman) |
+| Crew | Acceleration at each seat: sustained load factor, impact, vibration in the 2–16 Hz band |
+| Power | At joint shafts from torque and speed, transmission and tail rotor losses, piston engine power lapse with altitude |
 
-## Материалы
+## Materials
 
-24 материала в пяти группах (`src/core/materials.ts`): металлы, композиты, природные, волокна без
-связующего, лабораторные и теоретические (волокно и пучки нанотрубок, предел одиночной нанотрубки,
-графен, металлическое стекло). Значения и ссылки — `data/research.md` (собрано 2026-11-10, только
-по открытым страницам). Пропуски в источниках заполнены по стандартным правилам и перечислены
-у каждого материала в `estimates`; страница показывает их рядом с материалом.
+24 materials in five groups (`src/core/materials.ts`): metals, composites, natural, dry fibers without
+matrix, laboratory and theoretical (nanotube fiber and bundles, the single-nanotube limit,
+graphene, metallic glass). Values and references — `data/research.md` (compiled 2026-11-10, only
+from open pages). Gaps in the sources are filled by standard rules and listed
+for each material in `estimates`; the page shows them next to the material.
 
-## Сверка с эталонами
+## Validation against references
 
-С 2026-11-12 эталоны сверяются с реальными измерениями — таблица, допуски и расхождения в разделе
-«Пятая проверка физики» в начале файла (`npm run physics -- --validate`). Прежняя таблица этого раздела сверяла
-с допусками ТЗ 20–40 %, и часть её строк была зависимой (размах взмаха Snowbird подобран под оценку пилота,
-частота — под «16 взмахов за 19,3 с», мощность квадрокоптера — средняя за полёт, а не висение).
+Since 2026-11-12, references are validated against real measurements — the table, tolerances and discrepancies are in the
+"Fifth physics check" section at the beginning of the file (`npm run physics -- --validate`). The former table in this section compared
+against the spec's 20–40 % tolerances, and some of its rows were dependent (the Snowbird flapping amplitude was fitted to the pilot's estimate,
+the frequency — to "16 flaps in 19.3 s", the quadcopter power — averaged over the flight rather than hover).
 
-## Что найдено при сверке и как исправлено
+## What was found during validation and how it was fixed
 
-- **Позиционный мотор Rapier** исправляет угол в обход скоростей — ускорения по нему считать нельзя. Привод работает по скорости.
-- **Жёсткий шарнир Rapier податлив**: лопасти на нём отставали от втулки, и центробежная сила давала ложный момент на валу (мощность винта завышалась в 17 раз). Жёстко соединённые детали теперь — одно тело.
-- **Ускорение по разнице скоростей относится к середине шага**: плечи сил берутся там же.
-- **Индуктивный поток винта** пересчитывался мгновенно и раскачивался через шаг — теперь с запаздыванием, как в модели Питта — Петерса.
-- **Жёсткий контакт с землёй** гасит скорость за один шаг и даёт ложный пик ускорения. Для разрушения нагрузки сглаживаются до частоты, в 5 раз выше главного привода (не ниже 30 Гц).
-- **Равномерный индуктивный поток** занижал мощность R22 на 21 %. Введена стандартная поправка κ = 1,15 на неравномерность потока (параметр `inducedFactor` у винта).
+- **Rapier's position motor** corrects the angle bypassing velocities — accelerations cannot be computed from it. Actuators are velocity-driven.
+- **Rapier's fixed joint is compliant**: blades on it lagged behind the hub, and the centrifugal force produced a spurious shaft torque (rotor power was overestimated 17 times). Rigidly connected parts are now a single body.
+- **Acceleration from the velocity difference refers to the middle of the step**: force moment arms are taken at the same point.
+- **Rotor induced inflow** was recomputed instantly and oscillated every other step — now with a lag, as in the Pitt–Peters model.
+- **Rigid ground contact** kills velocity in a single step and produces a spurious acceleration spike. For failure, loads are smoothed to a frequency 5 times above the main drive (no lower than 30 Hz).
+- **Uniform induced inflow** underestimated R22 power by 21 %. The standard inflow non-uniformity correction κ = 1.15 was introduced (the rotor's `inducedFactor` parameter).
 
-## Подгонки, о которых нужно знать
+## Tuning you should know about
 
-Полный разбор — таблица «Разбор прежних проверок на подгонку» в разделе «Пятая проверка физики».
+Full breakdown — the "Review of previous checks for tuning" table in the "Fifth physics check" section.
 
-- Сечение лонжерона Cessna подобрано так, чтобы запас при 1 g был около 5,8 (разрушающая перегрузка нормальной категории 5,7) — устройства крыла в открытых данных нет.
-- Стенка лонжерона лопасти Ка-26 (9 мм) подобрана под запас около 1,9; вердикт Ка-26 по прочности зависимый.
-- Сопротивление SmartBird подобрано под качество L/D ≈ 7 из статьи Festo; запас тяги SmartBird поэтому не проверка.
-- Ушли из подгонок (2026-11-12): размах взмаха и закрутка Snowbird (теперь по диссертации Reichert), КПД привода SmartBird (теперь по замеру в статье).
-- Конусность лопастей R22 (2°) подобрана так, чтобы центробежная сила уравновешивала изгиб от тяги на висении.
-- Сопротивление лопастей квадрокоптера временно поднимали до 0,03, пока не было поправки κ; теперь — исходная оценка 0,02.
+- The Cessna spar cross-section is chosen so that the margin at 1 g is about 5.8 (the normal-category ultimate load factor is 5.7) — the wing structure is not in open data.
+- The Ka-26 blade spar wall (9 mm) is chosen to give a margin of about 1.9; the Ka-26 strength verdict is dependent.
+- SmartBird drag is fitted to the L/D ≈ 7 from the Festo paper; the SmartBird thrust margin is therefore not a check.
+- Removed from tuning (2026-11-12): Snowbird flapping amplitude and twist (now from Reichert's thesis), SmartBird drive efficiency (now from the measurement in the paper).
+- R22 blade coning (2°) is chosen so that centrifugal force balances the bending from thrust in hover.
+- Quadcopter blade drag was temporarily raised to 0.03 before the κ correction existed; now it is the original estimate of 0.02.
 
-## Пороги для экипажа
+## Crew thresholds
 
-Длительная перегрузка: тяжело от 2,5 g, опасно от 4 g, выход из строя (потеря сознания без защиты) от 6 g — NASA OCHMO-TB-024.
-Удар: низкий риск до 15,2 g (модель Брикли), предел сертификации кресел лёгких самолётов 26 g. Смертельных уровней в открытых
-первоисточниках нет. Вибрация (ISO 2631-1): тяжело от 1,25 м/с², опасно от 3 м/с²; наша вибрация не взвешена фильтром Wk.
+Sustained load factor: severe from 2.5 g, dangerous from 4 g, incapacitation (loss of consciousness without protection) from 6 g — NASA OCHMO-TB-024.
+Impact: low risk up to 15.2 g (Brinkley model), light-aircraft seat certification limit 26 g. Lethal levels are not given in open
+primary sources. Vibration (ISO 2631-1): severe from 1.25 m/s², dangerous from 3 m/s²; our vibration is not weighted with the Wk filter.
 
-## Мощность машущих крыльев
+## Flapping-wing power
 
-Считаются две величины. Без возврата энергии: сумма положительных частей мощности по приводам — привод
-платит за разгон крыла и за работу против воздуха, а торможение бесплатно. С полным возвратом: среднее со
-знаком за целые циклы — упругое крыло или пружина возвращают энергию, остаётся только работа над воздухом.
-Вердикт «не взлетает» выносится, если мощности не хватает даже с возвратом; если хватает только с возвратом —
-«на пределе». В величину без возврата входит и работа против постоянной подъёмной силы на ходе вниз: у
-настоящих махолётов её держит упругость крыла.
+Two quantities are computed. Without energy recovery: the sum of the positive parts of power over the actuators — the actuator
+pays for accelerating the wing and for work against the air, while deceleration is free. With full recovery: the signed average
+over whole cycles — an elastic wing or a spring returns the energy, leaving only the work done on the air.
+The "Does not fly" verdict is issued if power is insufficient even with recovery; if it is sufficient only with recovery —
+"at the limit". The no-recovery quantity also includes work against the steady lift on the downstroke: in
+real ornithopters it is carried by wing elasticity.
 
-## Ограничения
+## Limitations
 
-- Боковое движение самолёта не моделируется: в программе полёта корпус движется в вертикальной плоскости.
-- Скос потока от крыла на стабилизаторе не учитывается: самолёт устойчивее настоящего.
-- Лопасти винта приварены к втулке (качающаяся втулка R22 не моделируется); изгиб в корне частично снимается конусностью.
-- Колёса и полозья без амортизаторов.
-- Крыло — жёсткий брусок с поправкой на первую форму изгиба; высшие формы, флаттер и связь изгиба с аэродинамикой не считаются.
-- Машущее крыло в полёте вперёд (SmartBird, Snowbird) — с запаздыванием подъёмной силы и срыва; вихрь динамического срыва не учитывается. Взмах на месте (орнитоптер «Дюны») — квазистационарный.
-- Прочность: стенки лонжерона — однонаправленные, без слоёв ±45°; выпучивание от сдвига, расслоение и узлы крепления не считаются. У Snowbird прочность не проверяется (см. «Проверка прочности»).
-- Выше M 0,7 сечения помечаются «вне модели».
+- Airplane lateral motion is not modeled: in the flight program the fuselage moves in the vertical plane.
+- Wing downwash at the horizontal stabilizer is not accounted for: the airplane is more stable than the real one.
+- Rotor blades are welded to the hub (the R22 teetering hub is not modeled); root bending is partly relieved by coning.
+- Wheels and skids have no shock absorbers.
+- The wing is a rigid beam with a correction for the first bending mode; higher modes, flutter and bending–aerodynamics coupling are not computed.
+- A flapping wing in forward flight (SmartBird, Snowbird) — with lift and stall lag; the dynamic stall vortex is not accounted for. Flapping in place (the "Dune" ornithopter) — quasi-steady.
+- Strength: spar walls are unidirectional, without ±45° plies; shear buckling, delamination and attachment joints are not computed. Snowbird strength is not checked (see "Strength check").
+- Above M 0.7 sections are flagged "outside the model".
