@@ -23,6 +23,7 @@ import { Replay, Series } from './recorder.ts';
 import { Airflow } from './airflow.ts';
 import { reproRun } from '../core/repro.ts';
 import type { Job, JobReply } from './worker.ts';
+declare const __DEMO__: boolean; // vite.config.ts: демо без сервера (GitHub Pages)
 
 // ---------- язык ----------
 // ?lang= в адресе → выбор, сохранённый в этом браузере → язык браузера.
@@ -1230,6 +1231,7 @@ $('copyLink').addEventListener('click', async () => {
     btn.disabled = true;
     noteEl.textContent = tr('Сохраняю отчёт…', 'Saving the report…');
     try {
+      if (__DEMO__) throw new Error(tr('на демо сервера нет', 'the demo has no server'));
       const snapshot: Snapshot = { v: 1, lang: getLang(), digest: rview.digest, report: rview.report, charts: rview.charts, ...(rview.influence ? { influence: rview.influence } : {}) };
       const res = await fetch('/api/reports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ state: wireState(state), snapshot }) });
       const b = await res.json();
@@ -1238,7 +1240,7 @@ $('copyLink').addEventListener('click', async () => {
       url = `${location.origin}/r/${b.id}`;
     } catch (e) {
       // Без сервера — длинная ссылка: испытание целиком в адресе, повторяется у зрителя.
-      url = `${location.origin}/#r=${encodeState(state)}`;
+      url = `${location.origin}${location.pathname}#r=${encodeState(state)}`;
       noteEl.textContent = tr(`Сервер не сохранил отчёт (${e instanceof Error ? e.message : e}) — ссылка длинная, испытание записано в ней самой.`, `The server did not save the report (${e instanceof Error ? e.message : e}) — the link is long, the test is encoded in it.`);
       noteEl.dataset.fallback = '1';
     } finally {
@@ -1686,6 +1688,12 @@ function addGenerated(design: Design, info: string, imageNote?: string[]) {
 }
 async function checkApi() {
   const btn = $<HTMLButtonElement>('genBtn');
+  if (__DEMO__) {
+    btn.disabled = true;
+    genStatus.textContent = tr('Это демо на GitHub Pages: сборка аппарата по описанию и картинке работает только со своим сервером и ключом ИИ (npm run api). Выберите пример ниже — физика считается прямо в браузере.',
+      'This is the GitHub Pages demo: building a vehicle from a description or an image needs your own server and AI key (npm run api). Pick an example below — the physics runs right in your browser.');
+    return;
+  }
   try {
     const res = await fetch('/api/health');
     if (!res.ok) throw new Error();
