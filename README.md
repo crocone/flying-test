@@ -1,5 +1,7 @@
 # Flight test stand — stages 1–6
 
+**Live demo: https://crocone.github.io/flying-test/** — the whole stand runs in your browser. Building a vehicle from a description or an image needs your own server and AI key (`npm run api`), so it is switched off in the demo; pick one of the examples.
+
 > The check scripts (`npm run check`, `npm run physics`) print outcomes in Russian: ПРОЙДЕН = PASS, РАСХОЖДЕНИЕ = DIVERGENCE (a known, explained mismatch with measurements), ПРОВАЛ = FAIL, СПРАВОЧНО = INFO. The stand UI has a Russian/English switch.
 
 ## Human: power vs. duration, g-loads by axis and time (2026-11-23)
