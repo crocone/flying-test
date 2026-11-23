@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Мониторинг стенда</title>
+<style>
+  :root { color-scheme: dark; --bg: #000; --panel: #000; --ink: #fff; --quiet: #9b9b9b; --rule: rgba(255,255,255,.22); --accent: #fff; --bad: #fff; --good: #fff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font: 700 30px/1 Oswald, Bahnschrift, 'Arial Narrow', sans-serif; text-transform: uppercase; margin: 0 0 8px; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--quiet); margin: 22px 0 8px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+  .tile { background: var(--panel); border: 1px solid var(--rule); border-radius: 0; padding: 10px 12px; }
+  .tile b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+  .tile span { color: var(--quiet); font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; background: var(--panel); border: 1px solid var(--rule); border-radius: 0; }
+  th, td { padding: 6px 8px; border-bottom: 1px solid var(--rule); text-align: left; font-size: 13px; }
+  th { color: var(--quiet); font-weight: 600; }
+  td.n { text-align: right; }
+  .bad { background: #fff; color: #000; padding: 0 4px; }
+  .scroll { overflow-x: auto; }
+  form { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
+  input { font: inherit; padding: 6px 8px; border-radius: 0; border: 1px solid var(--rule); background: var(--panel); color: var(--ink); min-width: 260px; }
+  button { font: inherit; padding: 6px 12px; border-radius: 0; border: 1px solid var(--accent); background: #fff; color: #000; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; cursor: pointer; }
+  .note { color: var(--quiet); font-size: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Мониторинг стенда</h1>
+  <p class="note">Затраты на ИИ, генерации, ошибки и сохранённые отчёты. Пароль — переменная ADMIN_TOKEN сервера; хранится только в этой вкладке.</p>
+  <form id="login"><input id="token" type="password" placeholder="ADMIN_TOKEN" autocomplete="current-password"><button>Показать</button></form>
+  <p class="note" id="status" aria-live="polite"></p>
+  <div id="out" hidden>
+    <div class="tiles" id="tiles"></div>
+    <h2>По дням, последние 30</h2>
+    <div class="scroll"><table id="days"></table></div>
+    <h2>Ошибки за неделю</h2>
+    <div class="scroll"><table id="errors"></table></div>
+    <h2>Последние 50 генераций</h2>
+    <div class="scroll"><table id="recent"></table></div>
+  </div>
+</main>
+<script type="module" src="/src/web/admin.ts"></script>
+</body>
+</html>

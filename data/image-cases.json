@@ -1,0 +1,350 @@
+{
+ "note": "Нарисовано src/tools/draw.ts; разметка — из тех же размеров. Регенерация: npm run make-image-cases",
+ "cases": [
+  {
+   "id": "cessna-top",
+   "file": "image-cases/cessna-top.png",
+   "title": "Лёгкий самолёт, вид сверху, размерная линия",
+   "text": "",
+   "view": "top",
+   "style": "line",
+   "scale": {
+    "kind": "dimension",
+    "what": "span",
+    "label": "11,0 м"
+   },
+   "expect": {
+    "inScope": true,
+    "class": "fixed-wing",
+    "counts": {
+     "fixedWing.propellerCount": 1
+    },
+    "ratios": {
+     "span/length": 1.325301204819277,
+     "chord/span": 0.1309090909090909
+    },
+    "sizes": {
+     "fixedWing.span": 11
+    }
+   }
+  },
+  {
+   "id": "cessna-side",
+   "file": "image-cases/cessna-side.png",
+   "title": "Лёгкий самолёт сбоку, рядом человек",
+   "text": "",
+   "view": "side",
+   "style": "silhouette",
+   "scale": {
+    "kind": "person"
+   },
+   "expect": {
+    "inScope": true,
+    "class": "fixed-wing",
+    "counts": {
+     "fixedWing.propellerCount": 1
+    },
+    "ratios": {},
+    "sizes": {
+     "fuselage.length": 8.3
+    }
+   }
+  },
+  {
+   "id": "twin-top",
+   "file": "image-cases/twin-top.png",
+   "title": "Двухмоторный высокоплан, чертёж на сетке",
+   "text": "",
+   "view": "top",
+   "style": "blueprint",
+   "scale": {
+    "kind": "grid",
+    "stepM": 1,
+    "label": "клетка 1 м"
+   },
+   "expect": {
+    "inScope": true,
+    "class": "fixed-wing",
+    "counts": {
+     "fixedWing.propellerCount": 2
+    },
+    "ratios": {
+     "span/length": 1.3043478260869565,
+     "chord/span": 0.11
+    },
+    "sizes": {
+     "fixedWing.span": 15
+    }
+   }
+  },
+  {
+   "id": "transport-top",
+   "file": "image-cases/transport-top.png",
+   "title": "Четырёхмоторный самолёт сверху, без масштаба",
+   "text": "",
+   "view": "top",
+   "style": "line",
+   "scale": {
+    "kind": "none"
+   },
+   "expect": {
+    "inScope": true,
+    "class": "fixed-wing",
+    "counts": {
+     "fixedWing.propellerCount": 4
+    },
+    "ratios": {
+     "span/length": 1.3333333333333333,
+     "chord/span": 0.10625
+    }
+   }
+  },
+  {
+   "id": "r22-side",
+   "file": "image-cases/r22-side.png",
+   "title": "Лёгкий вертолёт сбоку, рядом человек",
+   "text": "",
+   "view": "side",
+   "style": "silhouette",
+   "scale": {
+    "kind": "person"
+   },
+   "expect": {
+    "inScope": true,
+    "class": "rotor",
+    "counts": {
+     "rotor.rotorCount": 1
+    },
+    "ratios": {
+     "rotorDiameter/length": 2.3968749999999996
+    },
+    "sizes": {
+     "rotor.radius": 3.835
+    }
+   }
+  },
+  {
+   "id": "r22-top",
+   "file": "image-cases/r22-top.png",
+   "title": "Лёгкий вертолёт сверху, размер по диаметру винта",
+   "text": "",
+   "view": "top",
+   "style": "line",
+   "scale": {
+    "kind": "dimension",
+    "what": "rotor",
+    "label": "7,67 м"
+   },
+   "expect": {
+    "inScope": true,
+    "class": "rotor",
+    "counts": {
+     "rotor.rotorCount": 1,
+     "rotor.bladeCount": 2
+    },
+    "ratios": {
+     "rotorDiameter/length": 2.3968749999999996
+    },
+    "sizes": {
+     "rotor.radius": 3.835
+    }
+   }
+  },
+  {
+   "id": "big-heli-side",
+   "file": "image-cases/big-heli-side.png",
+   "title": "Крупный вертолёт сбоку, чертёж, рядом человек",
+   "text": "",
+   "view": "side",
+   "style": "blueprint",
+   "scale": {
+    "kind": "person"
+   },
+   "expect": {
+    "inScope": true,
+    "class": "rotor",
+    "counts": {
+     "rotor.rotorCount": 1
+    },
+    "ratios": {
+     "rotorDiameter/length": 1.9363636363636365
+    },
+    "sizes": {
+     "rotor.radius": 10.65
+    }
+   }
+  },
+  {
+   "id": "heli3-top",
+   "file": "image-cases/heli3-top.png",
+   "title": "Вертолёт с трёхлопастным винтом сверху, без масштаба",
+   "text": "",
+   "view": "top",
+   "style": "silhouette",
+   "scale": {
+    "kind": "none"
+   },
+   "expect": {
+    "inScope": true,
+    "class": "rotor",
+    "counts": {
+     "rotor.rotorCount": 1,
+     "rotor.bladeCount": 3
+    },
+    "ratios": {
+     "rotorDiameter/length": 2.4444444444444446
+    }
+   }
+  },
+  {
+   "id": "quad-top",
+   "file": "image-cases/quad-top.png",
+   "title": "Квадрокоптер сверху, масса в подписи",
+   "text": "Масса 1,4 кг.",
+   "view": "top",
+   "style": "line",
+   "scale": {
+    "kind": "none"
+   },
+   "expect": {
+    "inScope": true,
+    "class": "rotor",
+    "counts": {
+     "rotor.rotorCount": 4
+    },
+    "ratios": {
+     "arm/radius": 1.4583333333333333
+    }
+   }
+  },
+  {
+   "id": "hexa-top",
+   "file": "image-cases/hexa-top.png",
+   "title": "Гексакоптер сверху, размер между осями винтов",
+   "text": "",
+   "view": "top",
+   "style": "silhouette",
+   "scale": {
+    "kind": "dimension",
+    "what": "span",
+    "label": "1,10 м"
+   },
+   "expect": {
+    "inScope": true,
+    "class": "rotor",
+    "counts": {
+     "rotor.rotorCount": 6
+    },
+    "ratios": {
+     "arm/radius": 2.75
+    },
+    "sizes": {
+     "rotor.armLength": 0.55
+    }
+   }
+  },
+  {
+   "id": "octo-top",
+   "file": "image-cases/octo-top.png",
+   "title": "Грузовой октокоптер, чертёж на сетке",
+   "text": "",
+   "view": "top",
+   "style": "blueprint",
+   "scale": {
+    "kind": "grid",
+    "stepM": 0.5,
+    "label": "клетка 0,5 м"
+   },
+   "expect": {
+    "inScope": true,
+    "class": "rotor",
+    "counts": {
+     "rotor.rotorCount": 8
+    },
+    "ratios": {
+     "arm/radius": 2.6315789473684212
+    },
+    "sizes": {
+     "rotor.armLength": 1
+    }
+   }
+  },
+  {
+   "id": "ornithopter-top",
+   "file": "image-cases/ornithopter-top.png",
+   "title": "Орнитоптер с четырьмя парами крыльев сверху",
+   "text": "",
+   "view": "top",
+   "style": "line",
+   "scale": {
+    "kind": "dimension",
+    "what": "length",
+    "label": "16 м"
+   },
+   "expect": {
+    "inScope": true,
+    "class": "flapping",
+    "counts": {
+     "flapping.wingsPerSide": 4
+    },
+    "ratios": {
+     "wing/length": 0.625,
+     "chord/wing": 0.12
+    },
+    "sizes": {
+     "flapping.span": 10
+    }
+   }
+  },
+  {
+   "id": "musclebird-front",
+   "file": "image-cases/musclebird-front.png",
+   "title": "Махолёт спереди, чертёж, рядом человек",
+   "text": "Мускулолёт.",
+   "view": "front",
+   "style": "blueprint",
+   "scale": {
+    "kind": "person"
+   },
+   "expect": {
+    "inScope": true,
+    "class": "flapping",
+    "counts": {
+     "flapping.wingsPerSide": 1
+    },
+    "ratios": {},
+    "sizes": {
+     "flapping.span": 15.6
+    }
+   }
+  },
+  {
+   "id": "chair",
+   "file": "image-cases/chair.png",
+   "title": "Стул (не транспорт)",
+   "text": "",
+   "view": "side",
+   "style": "line",
+   "scale": {
+    "kind": "none"
+   },
+   "expect": {
+    "inScope": false
+   }
+  },
+  {
+   "id": "house",
+   "file": "image-cases/house.png",
+   "title": "Дом и дерево (не транспорт)",
+   "text": "",
+   "view": "side",
+   "style": "silhouette",
+   "scale": {
+    "kind": "none"
+   },
+   "expect": {
+    "inScope": false
+   }
+  }
+ ]
+}

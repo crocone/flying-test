@@ -1,0 +1,4366 @@
+[
+ {
+  "id": "cessna-top",
+  "score": {
+   "id": "cessna-top",
+   "identified": true,
+   "problems": [],
+   "ratios": [
+    {
+     "name": "span/length",
+     "expected": 1.325301204819277,
+     "got": 1.3580246913580247,
+     "dev": 0.024691358024691468,
+     "ok": true
+    },
+    {
+     "name": "chord/span",
+     "expected": 0.1309090909090909,
+     "got": 0.12863636363636363,
+     "dev": 0.01736111111111105,
+     "ok": true
+    }
+   ],
+   "sizes": [
+    {
+     "field": "fixedWing.span",
+     "expected": 11,
+     "got": 11,
+     "dev": 0,
+     "ok": true
+    }
+   ]
+  },
+  "image": {
+   "showsAircraft": true,
+   "kind": "drawing",
+   "view": "top",
+   "scaleReference": {
+    "kind": "dimension-line",
+    "what": "размерная линия «11,0 м» под размахом крыла",
+    "sizeM": 11
+   },
+   "counts": {
+    "wings": 1,
+    "rotors": null,
+    "bladesPerRotor": null,
+    "propellers": 1
+   },
+   "measured": [
+    {
+     "what": "размах крыла",
+     "field": "fixedWing.span",
+     "valueM": 11,
+     "how": "совпадает с размерной линией 11,0 м (845 пикс)"
+    },
+    {
+     "what": "длина фюзеляжа от кока до хвоста",
+     "field": "fuselage.length",
+     "valueM": 8.1,
+     "how": "≈625 пикс при 76,8 пикс/м"
+    },
+    {
+     "what": "ширина фюзеляжа",
+     "field": "fuselage.width",
+     "valueM": 1.09,
+     "how": "≈84 пикс при 76,8 пикс/м"
+    },
+    {
+     "what": "корневая хорда крыла",
+     "field": "fixedWing.rootChord",
+     "valueM": 1.59,
+     "how": "≈122 пикс у борта фюзеляжа"
+    },
+    {
+     "what": "концевая хорда крыла",
+     "field": null,
+     "valueM": 1.24,
+     "how": "≈95 пикс на законцовке"
+    },
+    {
+     "what": "размах горизонтального оперения",
+     "field": null,
+     "valueM": 3.39,
+     "how": "≈261 пикс"
+    },
+    {
+     "what": "диаметр воздушного винта",
+     "field": null,
+     "valueM": 1.93,
+     "how": "≈148 пикс, черта винта"
+    }
+   ],
+   "notVisible": [
+    "высота фюзеляжа",
+    "вертикальное оперение",
+    "высокоплан или низкоплан",
+    "масса и мощность двигателя",
+    "материал конструкции",
+    "число лопастей винта"
+   ]
+  },
+  "design": {
+   "name": "Лёгкий одномоторный самолёт (схема)",
+   "vehicleClass": "fixed-wing",
+   "summary": "Одномоторный моноплан с тянущим винтом, прямым крылом и классическим оперением, по компоновке близкий к Cessna 172. Размеры сняты с чертежа по размерной линии 11,0 м, массы и мощность оценены по аналогу Cessna 172.",
+   "environment": {
+    "name": "Земля",
+    "g": 9.81,
+    "rho": 1.225,
+    "soundSpeed": 340.3
+   },
+   "fuselage": {
+    "length": 8.1,
+    "width": 1.09,
+    "height": 1.4,
+    "mass": 890,
+    "dragArea": 0.45
+   },
+   "material": "al7075",
+   "sparWall": 0.003,
+   "powerplant": {
+    "power": 120000,
+    "lapse": "piston",
+    "losses": 0.05
+   },
+   "crewSeats": 4,
+   "fixedWing": {
+    "span": 11,
+    "rootChord": 1.59,
+    "tipChord": 1.24,
+    "highWing": true,
+    "airfoil": {
+     "cl0": 0.25,
+     "clMax": 1.5,
+     "cd0": 0.008,
+     "thickness": 0.12
+    },
+    "tailArea": 2.1,
+    "tailArm": 4.6,
+    "propellerDiameter": 1.93,
+    "propellerCount": 1,
+    "limitLoadFactor": 3.8
+   },
+   "rotor": null,
+   "flapping": null,
+   "assumptions": [
+    {
+     "field": "fixedWing.span",
+     "value": 11,
+     "unit": "м",
+     "label": "размах крыла",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "Совпадает с размерной линией 11,0 м на чертеже."
+    },
+    {
+     "field": "fuselage.length",
+     "value": 8.1,
+     "unit": "м",
+     "label": "длина фюзеляжа",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "≈625 пикс при масштабе 76,8 пикс/м по размерной линии 11,0 м."
+    },
+    {
+     "field": "fuselage.width",
+     "value": 1.09,
+     "unit": "м",
+     "label": "ширина фюзеляжа",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "≈84 пикс по размерной линии 11,0 м."
+    },
+    {
+     "field": "fixedWing.rootChord",
+     "value": 1.59,
+     "unit": "м",
+     "label": "корневая хорда",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "≈122 пикс у борта фюзеляжа по размерной линии 11,0 м."
+    },
+    {
+     "field": "fixedWing.tipChord",
+     "value": 1.24,
+     "unit": "м",
+     "label": "концевая хорда",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "≈95 пикс на законцовке по размерной линии 11,0 м."
+    },
+    {
+     "field": "fixedWing.propellerDiameter",
+     "value": 1.93,
+     "unit": "м",
+     "label": "диаметр винта",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "Черта винта ≈148 пикс по размерной линии 11,0 м."
+    },
+    {
+     "field": "fixedWing.propellerCount",
+     "value": 1,
+     "unit": "шт",
+     "label": "число воздушных винтов",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "На чертеже виден один тянущий винт."
+    },
+    {
+     "field": "fixedWing.tailArea",
+     "value": 2.1,
+     "unit": "м²",
+     "label": "площадь горизонтального оперения",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "Размах ≈3,39 м по чертежу при средней хорде ≈0,65 м."
+    },
+    {
+     "field": "fixedWing.tailArm",
+     "value": 4.6,
+     "unit": "м",
+     "label": "плечо оперения",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "Расстояние от четверти хорды крыла до четверти хорды стабилизатора по чертежу."
+    },
+    {
+     "field": "fuselage.height",
+     "value": 1.4,
+     "unit": "м",
+     "label": "высота фюзеляжа",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Не видна на виде сверху; кабина на сидящего человека, как у Cessna 172."
+    },
+    {
+     "field": "fuselage.mass",
+     "value": 890,
+     "unit": "кг",
+     "label": "масса без крыла и оперения",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Взлётная масса аналога Cessna 172 ≈1100 кг минус ≈210 кг на крыло и оперение."
+    },
+    {
+     "field": "fuselage.dragArea",
+     "value": 0.45,
+     "unit": "м²",
+     "label": "площадь вредного сопротивления",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типично для лёгкого самолёта с неубирающимся шасси."
+    },
+    {
+     "field": "powerplant.power",
+     "value": 120000,
+     "unit": "Вт",
+     "label": "мощность двигателя",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Поршневой двигатель ≈160 л.с., как у Cessna 172."
+    },
+    {
+     "field": "powerplant.losses",
+     "value": 0.05,
+     "unit": "",
+     "label": "потери",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Прямой привод винта без трансмиссии."
+    },
+    {
+     "field": "crewSeats",
+     "value": 4,
+     "unit": "мест",
+     "label": "места",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Ширина кабины ≈1,1 м — два ряда по два кресла, как у Cessna 172."
+    },
+    {
+     "field": "sparWall",
+     "value": 0.003,
+     "unit": "м",
+     "label": "стенка лонжерона",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типично для алюминиевого лонжерона лёгкого самолёта."
+    },
+    {
+     "field": "fixedWing.airfoil.cl0",
+     "value": 0.25,
+     "unit": "",
+     "label": "C_L при нулевом угле",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Несимметричный профиль типа NACA 2412."
+    },
+    {
+     "field": "fixedWing.airfoil.clMax",
+     "value": 1.5,
+     "unit": "",
+     "label": "максимальный C_L",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типично для NACA 2412."
+    },
+    {
+     "field": "fixedWing.airfoil.cd0",
+     "value": 0.008,
+     "unit": "",
+     "label": "профильное сопротивление",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типично для профиля NACA 2412."
+    },
+    {
+     "field": "fixedWing.airfoil.thickness",
+     "value": 0.12,
+     "unit": "",
+     "label": "относительная толщина",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Профиль толщиной 12 %, как NACA 2412."
+    },
+    {
+     "field": "fixedWing.limitLoadFactor",
+     "value": 3.8,
+     "unit": "",
+     "label": "эксплуатационная перегрузка",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "Норма для лёгкого самолёта нормальной категории."
+    },
+    {
+     "field": "environment.g",
+     "value": 9.81,
+     "unit": "м/с²",
+     "label": "ускорение свободного падения",
+     "confidence": "high",
+     "origin": "estimated",
+     "reason": "Земля по умолчанию."
+    },
+    {
+     "field": "environment.rho",
+     "value": 1.225,
+     "unit": "кг/м³",
+     "label": "плотность воздуха",
+     "confidence": "high",
+     "origin": "estimated",
+     "reason": "Земля, уровень моря."
+    },
+    {
+     "field": "environment.soundSpeed",
+     "value": 340.3,
+     "unit": "м/с",
+     "label": "скорость звука",
+     "confidence": "high",
+     "origin": "estimated",
+     "reason": "Земля, уровень моря."
+    }
+   ]
+  },
+  "ms": 28221,
+  "costUsd": 0.183219,
+  "steps": [
+   {
+    "name": "разбор",
+    "ms": 8223,
+    "output": 739
+   },
+   {
+    "name": "проект",
+    "ms": 19981,
+    "output": 2409
+   }
+  ],
+  "fixes": []
+ },
+ {
+  "id": "cessna-side",
+  "score": {
+   "id": "cessna-side",
+   "identified": true,
+   "problems": [],
+   "ratios": [],
+   "sizes": [
+    {
+     "field": "fuselage.length",
+     "expected": 8.3,
+     "got": 8.3,
+     "dev": 0,
+     "ok": true
+    }
+   ]
+  },
+  "image": {
+   "showsAircraft": true,
+   "kind": "drawing",
+   "view": "side",
+   "scaleReference": {
+    "kind": "person",
+    "what": "фигура человека справа от самолёта, около 221 пикселя по высоте",
+    "sizeM": 1.8
+   },
+   "counts": {
+    "wings": 1,
+    "rotors": null,
+    "bladesPerRotor": null,
+    "propellers": 1
+   },
+   "measured": [
+    {
+     "what": "длина фюзеляжа от носа до хвостового среза",
+     "field": "fuselage.length",
+     "valueM": 8.3,
+     "how": "около 1018 пикселей — в 4,6 раза больше роста человека"
+    },
+    {
+     "what": "высота фюзеляжа в районе кабины",
+     "field": "fuselage.height",
+     "valueM": 1.4,
+     "how": "около 172 пикселей — примерно 0,78 роста человека"
+    },
+    {
+     "what": "хорда крыла у корня (длина крыла на виде сбоку)",
+     "field": "fixedWing.rootChord",
+     "valueM": 1.64,
+     "how": "около 201 пикселя — примерно 0,91 роста человека"
+    },
+    {
+     "what": "диаметр воздушного винта",
+     "field": null,
+     "valueM": 1.91,
+     "how": "около 235 пикселей — примерно 1,06 роста человека"
+    },
+    {
+     "what": "высота киля над хвостовой балкой",
+     "field": null,
+     "valueM": 1.44,
+     "how": "около 177 пикселей — примерно 0,8 роста человека"
+    }
+   ],
+   "notVisible": [
+    "размах крыла (на виде сбоку не виден)",
+    "ширина фюзеляжа",
+    "размах горизонтального оперения",
+    "масса, двигатель и его мощность",
+    "материал конструкции"
+   ]
+  },
+  "design": {
+   "name": "Лёгкий подкосный высоплан (по силуэту, похож на Cessna 172)",
+   "vehicleClass": "fixed-wing",
+   "summary": "Одномоторный подкосный высокоплан с тянущим винтом и классическим оперением. Длина, высота корпуса, хорда и диаметр винта сняты с изображения по фигуре человека 1,8 м; остальное оценено по аналогии с Cessna 172.",
+   "environment": {
+    "name": "Земля",
+    "g": 9.81,
+    "rho": 1.225,
+    "soundSpeed": 340.3
+   },
+   "fuselage": {
+    "length": 8.3,
+    "width": 1.1,
+    "height": 1.4,
+    "mass": 930,
+    "dragArea": 0.6
+   },
+   "material": "al7075",
+   "sparWall": 0.003,
+   "powerplant": {
+    "power": 120000,
+    "lapse": "piston",
+    "losses": 0.05
+   },
+   "crewSeats": 4,
+   "fixedWing": {
+    "span": 11,
+    "rootChord": 1.64,
+    "tipChord": 1.2,
+    "highWing": true,
+    "airfoil": {
+     "cl0": 0.25,
+     "clMax": 1.5,
+     "cd0": 0.009,
+     "thickness": 0.12
+    },
+    "tailArea": 3.4,
+    "tailArm": 4.6,
+    "propellerDiameter": 1.91,
+    "propellerCount": 1,
+    "limitLoadFactor": 3.8
+   },
+   "rotor": null,
+   "flapping": null,
+   "assumptions": [
+    {
+     "field": "fuselage.length",
+     "value": 8.3,
+     "unit": "м",
+     "label": "длина фюзеляжа",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "около 1018 пикселей при фигуре человека 1,8 м ≈ 221 пиксель."
+    },
+    {
+     "field": "fuselage.height",
+     "value": 1.4,
+     "unit": "м",
+     "label": "высота фюзеляжа",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "около 172 пикселей по эталону человека 1,8 м."
+    },
+    {
+     "field": "fixedWing.rootChord",
+     "value": 1.64,
+     "unit": "м",
+     "label": "корневая хорда крыла",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "около 201 пикселя по эталону человека 1,8 м."
+    },
+    {
+     "field": "fixedWing.propellerDiameter",
+     "value": 1.91,
+     "unit": "м",
+     "label": "диаметр винта",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "около 235 пикселей по эталону человека 1,8 м."
+    },
+    {
+     "field": "fixedWing.propellerCount",
+     "value": 1,
+     "unit": "шт",
+     "label": "число винтов",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "на силуэте виден один тянущий винт."
+    },
+    {
+     "field": "fuselage.width",
+     "value": 1.1,
+     "unit": "м",
+     "label": "ширина фюзеляжа",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "кабина на два кресла в ряд, как у Cessna 172."
+    },
+    {
+     "field": "fuselage.mass",
+     "value": 930,
+     "unit": "кг",
+     "label": "масса без крыла и оперения",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "взлётная масса аналога Cessna 172 ~1110 кг минус ~180 кг крыла и оперения."
+    },
+    {
+     "field": "fuselage.dragArea",
+     "value": 0.6,
+     "unit": "м²",
+     "label": "площадь вредного сопротивления",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "типично для подкосного высокоплана с неубирающимся шасси."
+    },
+    {
+     "field": "sparWall",
+     "value": 0.003,
+     "unit": "м",
+     "label": "толщина стенки лонжерона",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "типично для алюминиевого лонжерона лёгкого самолёта."
+    },
+    {
+     "field": "powerplant.power",
+     "value": 120000,
+     "unit": "Вт",
+     "label": "мощность двигателя",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "поршневой двигатель аналога Cessna 172 ~160 л.с."
+    },
+    {
+     "field": "powerplant.losses",
+     "value": 0.05,
+     "unit": "доля",
+     "label": "потери",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "прямой привод винта без редуктора."
+    },
+    {
+     "field": "crewSeats",
+     "value": 4,
+     "unit": "чел",
+     "label": "мест",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "размер кабины соответствует четырёхместному аналогу."
+    },
+    {
+     "field": "fixedWing.span",
+     "value": 11,
+     "unit": "м",
+     "label": "размах крыла",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "на виде сбоку не виден; принят по аналогу Cessna 172."
+    },
+    {
+     "field": "fixedWing.tipChord",
+     "value": 1.2,
+     "unit": "м",
+     "label": "концевая хорда",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "небольшое сужение консолей, как у аналога."
+    },
+    {
+     "field": "fixedWing.airfoil.cl0",
+     "value": 0.25,
+     "unit": "",
+     "label": "C_L при нулевом угле",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "обычный несимметричный профиль типа NACA 2412."
+    },
+    {
+     "field": "fixedWing.airfoil.clMax",
+     "value": 1.5,
+     "unit": "",
+     "label": "максимальный C_L",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "типично для профиля NACA 2412."
+    },
+    {
+     "field": "fixedWing.airfoil.cd0",
+     "value": 0.009,
+     "unit": "",
+     "label": "профильное сопротивление",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "типично для профиля NACA 2412."
+    },
+    {
+     "field": "fixedWing.airfoil.thickness",
+     "value": 0.12,
+     "unit": "",
+     "label": "относительная толщина",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "профиль типа NACA 2412."
+    },
+    {
+     "field": "fixedWing.tailArea",
+     "value": 3.4,
+     "unit": "м²",
+     "label": "площадь ГО",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "размах ГО не виден; принято по аналогу Cessna 172."
+    },
+    {
+     "field": "fixedWing.tailArm",
+     "value": 4.6,
+     "unit": "м",
+     "label": "плечо ГО",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "расстояние от крыла до хвостового оперения по силуэту ≈ 565 пикселей по эталону человека."
+    },
+    {
+     "field": "fixedWing.limitLoadFactor",
+     "value": 3.8,
+     "unit": "g",
+     "label": "эксплуатационная перегрузка",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "норматив для лёгкого самолёта нормальной категории."
+    }
+   ]
+  },
+  "ms": 28906,
+  "costUsd": 0.12657980000000002,
+  "steps": [
+   {
+    "name": "разбор",
+    "ms": 11384,
+    "output": 1030
+   },
+   {
+    "name": "проект",
+    "ms": 17517,
+    "output": 2156
+   }
+  ],
+  "fixes": []
+ },
+ {
+  "id": "twin-top",
+  "score": {
+   "id": "twin-top",
+   "identified": true,
+   "problems": [],
+   "ratios": [
+    {
+     "name": "span/length",
+     "expected": 1.3043478260869565,
+     "got": 1.3157894736842104,
+     "dev": 0.008771929824561209,
+     "ok": true
+    },
+    {
+     "name": "chord/span",
+     "expected": 0.11,
+     "got": 0.10666666666666667,
+     "dev": 0.030303030303030276,
+     "ok": true
+    }
+   ],
+   "sizes": [
+    {
+     "field": "fixedWing.span",
+     "expected": 15,
+     "got": 15,
+     "dev": 0,
+     "ok": true
+    }
+   ]
+  },
+  "image": {
+   "showsAircraft": true,
+   "kind": "drawing",
+   "view": "top",
+   "scaleReference": {
+    "kind": "grid",
+    "what": "сетка с подписью «клетка 1 м» (шаг клетки ≈62,5 пикселя)",
+    "sizeM": 1
+   },
+   "counts": {
+    "wings": 1,
+    "rotors": null,
+    "bladesPerRotor": null,
+    "propellers": 2
+   },
+   "measured": [
+    {
+     "what": "длина фюзеляжа",
+     "field": "fuselage.length",
+     "valueM": 11.4,
+     "how": "от носа (y≈90) до хвоста (y≈810), ≈720 пикс / 62,5 пикс на клетку ≈ 11,5 клетки"
+    },
+    {
+     "what": "ширина фюзеляжа",
+     "field": "fuselage.width",
+     "valueM": 1.4,
+     "how": "≈88 пикс ≈ 1,4 клетки"
+    },
+    {
+     "what": "размах крыла",
+     "field": "fixedWing.span",
+     "valueM": 15,
+     "how": "от x≈230 до x≈1170, ≈940 пикс ≈ 15 клеток"
+    },
+    {
+     "what": "корневая хорда крыла",
+     "field": "fixedWing.rootChord",
+     "valueM": 1.9,
+     "how": "у борта от y≈322 до y≈442, ≈120 пикс ≈ 1,9 клетки"
+    },
+    {
+     "what": "концевая хорда крыла",
+     "field": null,
+     "valueM": 1.3,
+     "how": "на конце от y≈331 до y≈412, ≈81 пикс ≈ 1,3 клетки"
+    },
+    {
+     "what": "диаметр воздушного винта",
+     "field": null,
+     "valueM": 2.2,
+     "how": "линия винта ≈138 пикс ≈ 2,2 клетки"
+    },
+    {
+     "what": "размах горизонтального оперения",
+     "field": null,
+     "valueM": 5,
+     "how": "от x≈543 до x≈857, ≈314 пикс ≈ 5 клеток"
+    }
+   ],
+   "notVisible": [
+    "высота фюзеляжа",
+    "вертикальное оперение",
+    "расположение крыла по высоте (верхнее/нижнее)",
+    "число лопастей винтов",
+    "массы, мощность двигателей, материал"
+   ]
+  },
+  "design": {
+   "name": "Лёгкий двухмоторный самолёт (чертёж)",
+   "vehicleClass": "fixed-wing",
+   "summary": "Лёгкий двухмоторный винтовой самолёт нормальной схемы с прямым трапециевидным крылом и двумя тянущими винтами на мотогондолах. Размеры сняты с чертежа по сетке «клетка 1 м», массы и мощность оценены по аналогам класса (Beechcraft Baron, Piper Seneca, Л-410 меньшего размера).",
+   "environment": {
+    "name": "Земля",
+    "g": 9.81,
+    "rho": 1.225,
+    "soundSpeed": 340.3
+   },
+   "fuselage": {
+    "length": 11.4,
+    "width": 1.4,
+    "height": 1.6,
+    "mass": 3000,
+    "dragArea": 0.45
+   },
+   "material": "al7075",
+   "sparWall": 0.004,
+   "powerplant": {
+    "power": 450000,
+    "lapse": "turbine",
+    "losses": 0.05
+   },
+   "crewSeats": 8,
+   "fixedWing": {
+    "span": 15,
+    "rootChord": 1.9,
+    "tipChord": 1.3,
+    "highWing": false,
+    "airfoil": {
+     "cl0": 0.25,
+     "clMax": 1.5,
+     "cd0": 0.009,
+     "thickness": 0.15
+    },
+    "tailArea": 5.1,
+    "tailArm": 6,
+    "propellerDiameter": 2.2,
+    "propellerCount": 2,
+    "limitLoadFactor": 3.8
+   },
+   "rotor": null,
+   "flapping": null,
+   "assumptions": [
+    {
+     "field": "fuselage.length",
+     "value": 11.4,
+     "unit": "м",
+     "label": "длина фюзеляжа",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "≈720 пикс при клетке 62,5 пикс по сетке «клетка 1 м»"
+    },
+    {
+     "field": "fuselage.width",
+     "value": 1.4,
+     "unit": "м",
+     "label": "ширина фюзеляжа",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "≈88 пикс по сетке «клетка 1 м»"
+    },
+    {
+     "field": "fuselage.height",
+     "value": 1.6,
+     "unit": "м",
+     "label": "высота фюзеляжа",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "на виде сверху не видна; кабина под сидящего человека 1,8 м, как у лёгких двухмоторных самолётов"
+    },
+    {
+     "field": "fuselage.mass",
+     "value": 3000,
+     "unit": "кг",
+     "label": "масса всего, кроме крыла и оперения",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "взлётная масса аналогов при размахе 15 м около 3,5–4 т за вычетом крыла и оперения"
+    },
+    {
+     "field": "fuselage.dragArea",
+     "value": 0.45,
+     "unit": "м²",
+     "label": "площадь вредного сопротивления фюзеляжа и гондол",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "типично для лёгких двухмоторных самолётов с неубираемыми обтекаемыми гондолами"
+    },
+    {
+     "field": "sparWall",
+     "value": 0.004,
+     "unit": "м",
+     "label": "толщина стенки лонжерона",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "типичные полки лонжерона алюминиевого крыла лёгкого самолёта"
+    },
+    {
+     "field": "powerplant.power",
+     "value": 450000,
+     "unit": "Вт",
+     "label": "суммарная мощность двигателей",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "два двигателя по ~225 кВт, как у аналогов этой размерности"
+    },
+    {
+     "field": "powerplant.losses",
+     "value": 0.05,
+     "unit": "",
+     "label": "потери в трансмиссии",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "прямой привод винтов, небольшие потери на агрегаты"
+    },
+    {
+     "field": "crewSeats",
+     "value": 8,
+     "unit": "",
+     "label": "число мест",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "фюзеляж 11,4 м шириной 1,4 м вмещает около 8 кресел"
+    },
+    {
+     "field": "fixedWing.span",
+     "value": 15,
+     "unit": "м",
+     "label": "размах крыла",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "≈940 пикс по сетке «клетка 1 м»"
+    },
+    {
+     "field": "fixedWing.rootChord",
+     "value": 1.9,
+     "unit": "м",
+     "label": "корневая хорда",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "≈120 пикс у борта по сетке"
+    },
+    {
+     "field": "fixedWing.tipChord",
+     "value": 1.3,
+     "unit": "м",
+     "label": "концевая хорда",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "≈81 пикс на конце крыла по сетке"
+    },
+    {
+     "field": "fixedWing.airfoil.cl0",
+     "value": 0.25,
+     "unit": "",
+     "label": "C_L при нулевом угле",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "обычный несимметричный профиль серии NACA 23015"
+    },
+    {
+     "field": "fixedWing.airfoil.clMax",
+     "value": 1.5,
+     "unit": "",
+     "label": "максимальный C_L профиля",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "типично для NACA 230xx"
+    },
+    {
+     "field": "fixedWing.airfoil.cd0",
+     "value": 0.009,
+     "unit": "",
+     "label": "профильное сопротивление",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "типично для металлического крыла лёгкого самолёта"
+    },
+    {
+     "field": "fixedWing.airfoil.thickness",
+     "value": 0.15,
+     "unit": "",
+     "label": "относительная толщина профиля",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "типично для крыльев лёгких двухмоторных самолётов"
+    },
+    {
+     "field": "fixedWing.tailArea",
+     "value": 5.1,
+     "unit": "м²",
+     "label": "площадь горизонтального оперения",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "размах 5 м, средняя хорда ≈1,1 м за вычетом фюзеляжа по сетке"
+    },
+    {
+     "field": "fixedWing.tailArm",
+     "value": 6,
+     "unit": "м",
+     "label": "плечо оперения",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "от четверти хорды крыла (y≈350) до оперения (y≈770) ≈420 пикс по сетке"
+    },
+    {
+     "field": "fixedWing.propellerDiameter",
+     "value": 2.2,
+     "unit": "м",
+     "label": "диаметр винта",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "линия винта ≈138 пикс по сетке"
+    },
+    {
+     "field": "fixedWing.propellerCount",
+     "value": 2,
+     "unit": "",
+     "label": "число винтов",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "на чертеже видны два винта на мотогондолах"
+    },
+    {
+     "field": "fixedWing.limitLoadFactor",
+     "value": 3.8,
+     "unit": "",
+     "label": "эксплуатационная перегрузка",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "норма для лёгкого самолёта нормальной категории"
+    }
+   ]
+  },
+  "ms": 27628,
+  "costUsd": 0.18412299999999998,
+  "steps": [
+   {
+    "name": "разбор",
+    "ms": 9601,
+    "output": 875
+   },
+   {
+    "name": "проект",
+    "ms": 18019,
+    "output": 2291
+   }
+  ],
+  "fixes": []
+ },
+ {
+  "id": "transport-top",
+  "score": {
+   "id": "transport-top",
+   "identified": true,
+   "problems": [],
+   "ratios": [
+    {
+     "name": "span/length",
+     "expected": 1.3333333333333333,
+     "got": 1.3605442176870748,
+     "dev": 0.020408163265306145,
+     "ok": true
+    },
+    {
+     "name": "chord/span",
+     "expected": 0.10625,
+     "got": 0.10124999999999999,
+     "dev": 0.04705882352941182,
+     "ok": true
+    }
+   ],
+   "sizes": []
+  },
+  "image": {
+   "showsAircraft": true,
+   "kind": "drawing",
+   "view": "top",
+   "scaleReference": {
+    "kind": "none",
+    "what": "эталона масштаба нет; масштаб принят по типу аппарата — четырёхмоторный турбовинтовой транспортник, размах около 40 м (как у C-130/Ан-12)",
+    "sizeM": null
+   },
+   "counts": {
+    "wings": 1,
+    "rotors": null,
+    "bladesPerRotor": null,
+    "propellers": 4
+   },
+   "measured": [
+    {
+     "what": "размах крыла",
+     "field": "fixedWing.span",
+     "valueM": 40,
+     "how": "960 пикселей; принято по типу аппарата (масштаб ≈0,0417 м/пиксель)"
+    },
+    {
+     "what": "длина фюзеляжа",
+     "field": "fuselage.length",
+     "valueM": 29.4,
+     "how": "705 пикселей (от носа до хвоста) × 0,0417 м/пиксель"
+    },
+    {
+     "what": "ширина фюзеляжа",
+     "field": "fuselage.width",
+     "valueM": 3.5,
+     "how": "84 пикселя × 0,0417 м/пиксель"
+    },
+    {
+     "what": "корневая хорда крыла",
+     "field": "fixedWing.rootChord",
+     "valueM": 5.6,
+     "how": "≈135 пикселей у борта фюзеляжа × 0,0417 м/пиксель"
+    },
+    {
+     "what": "концевая хорда крыла",
+     "field": null,
+     "valueM": 2.5,
+     "how": "60 пикселей × 0,0417 м/пиксель"
+    },
+    {
+     "what": "диаметр воздушного винта",
+     "field": null,
+     "valueM": 4.5,
+     "how": "108 пикселей × 0,0417 м/пиксель"
+    },
+    {
+     "what": "размах горизонтального оперения",
+     "field": null,
+     "valueM": 14,
+     "how": "336 пикселей × 0,0417 м/пиксель"
+    }
+   ],
+   "notVisible": []
+  },
+  "design": {
+   "name": "Четырёхмоторный турбовинтовой транспортник (схема)",
+   "vehicleClass": "fixed-wing",
+   "summary": "Высокоплан с прямым трапециевидным крылом, четырьмя турбовинтовыми двигателями и нормальным оперением, по компоновке близкий к C-130/Ан-12. Эталона масштаба на чертеже нет, поэтому размах принят около 40 м по типу аппарата, остальные размеры сняты с чертежа пропорционально.",
+   "environment": {
+    "name": "Земля",
+    "g": 9.81,
+    "rho": 1.225,
+    "soundSpeed": 340.3
+   },
+   "fuselage": {
+    "length": 29.4,
+    "width": 3.5,
+    "height": 4,
+    "mass": 58000,
+    "dragArea": 3.5
+   },
+   "material": "al7075",
+   "sparWall": 0.012,
+   "powerplant": {
+    "power": 13000000,
+    "lapse": "turbine",
+    "losses": 0.1
+   },
+   "crewSeats": 5,
+   "fixedWing": {
+    "span": 40,
+    "rootChord": 5.6,
+    "tipChord": 2.5,
+    "highWing": true,
+    "airfoil": {
+     "cl0": 0.25,
+     "clMax": 1.5,
+     "cd0": 0.009,
+     "thickness": 0.16
+    },
+    "tailArea": 45,
+    "tailArm": 14.5,
+    "propellerDiameter": 4.5,
+    "propellerCount": 4,
+    "limitLoadFactor": 2.5
+   },
+   "rotor": null,
+   "flapping": null,
+   "assumptions": [
+    {
+     "field": "fixedWing.span",
+     "value": 40,
+     "unit": "м",
+     "label": "размах крыла",
+     "confidence": "low",
+     "origin": "image",
+     "reason": "Эталона нет; размах принят по типу аппарата (C-130/Ан-12 ≈ 38–40 м), задаёт масштаб 0,0417 м/пиксель."
+    },
+    {
+     "field": "fuselage.length",
+     "value": 29.4,
+     "unit": "м",
+     "label": "длина фюзеляжа",
+     "confidence": "low",
+     "origin": "image",
+     "reason": "705 пикселей при масштабе, принятом по размаху 40 м."
+    },
+    {
+     "field": "fuselage.width",
+     "value": 3.5,
+     "unit": "м",
+     "label": "ширина фюзеляжа",
+     "confidence": "low",
+     "origin": "image",
+     "reason": "84 пикселя при масштабе по размаху 40 м."
+    },
+    {
+     "field": "fixedWing.rootChord",
+     "value": 5.6,
+     "unit": "м",
+     "label": "корневая хорда",
+     "confidence": "low",
+     "origin": "image",
+     "reason": "≈135 пикселей у борта при масштабе по размаху 40 м."
+    },
+    {
+     "field": "fixedWing.tipChord",
+     "value": 2.5,
+     "unit": "м",
+     "label": "концевая хорда",
+     "confidence": "low",
+     "origin": "image",
+     "reason": "60 пикселей при масштабе по размаху 40 м."
+    },
+    {
+     "field": "fixedWing.propellerDiameter",
+     "value": 4.5,
+     "unit": "м",
+     "label": "диаметр воздушного винта",
+     "confidence": "low",
+     "origin": "image",
+     "reason": "108 пикселей при масштабе по размаху 40 м."
+    },
+    {
+     "field": "fixedWing.propellerCount",
+     "value": 4,
+     "unit": "шт",
+     "label": "число воздушных винтов",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "На чертеже видны четыре винта на мотогондолах."
+    },
+    {
+     "field": "fixedWing.tailArea",
+     "value": 45,
+     "unit": "м²",
+     "label": "площадь горизонтального оперения",
+     "confidence": "low",
+     "origin": "image",
+     "reason": "Размах ГО 14 м по чертежу при средней хорде около 3,2 м (≈70–80 пикселей)."
+    },
+    {
+     "field": "fixedWing.tailArm",
+     "value": 14.5,
+     "unit": "м",
+     "label": "плечо горизонтального оперения",
+     "confidence": "low",
+     "origin": "image",
+     "reason": "≈350 пикселей от четверти хорды крыла до ГО при масштабе по размаху 40 м."
+    },
+    {
+     "field": "fuselage.height",
+     "value": 4,
+     "unit": "м",
+     "label": "высота фюзеляжа",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "На виде сверху не видна; принята по аналогии с C-130 при ширине 3,5 м."
+    },
+    {
+     "field": "fuselage.mass",
+     "value": 58000,
+     "unit": "кг",
+     "label": "масса без крыла и оперения",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Взлётная масса аналога C-130/Ан-12 около 61 т за вычетом массы крыла и оперения."
+    },
+    {
+     "field": "fuselage.dragArea",
+     "value": 3.5,
+     "unit": "м²",
+     "label": "площадь вредного сопротивления",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типично для транспортника с турбовинтовыми гондолами и крылом площадью ≈160 м²."
+    },
+    {
+     "field": "sparWall",
+     "value": 0.012,
+     "unit": "м",
+     "label": "толщина стенки лонжерона",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типичная толщина поясов и стенок лонжерона алюминиевого крыла транспортника."
+    },
+    {
+     "field": "powerplant.power",
+     "value": 13000000,
+     "unit": "Вт",
+     "label": "суммарная мощность на валах",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Четыре двигателя класса Т56/АИ-20 мощностью около 3,2–3,4 МВт каждый."
+    },
+    {
+     "field": "powerplant.losses",
+     "value": 0.1,
+     "unit": "доля",
+     "label": "потери",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Потери в редукторах и отбор мощности на агрегаты турбовинтовых двигателей."
+    },
+    {
+     "field": "crewSeats",
+     "value": 5,
+     "unit": "чел",
+     "label": "экипаж",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типичный экипаж транспортника класса C-130."
+    },
+    {
+     "field": "fixedWing.airfoil.cl0",
+     "value": 0.25,
+     "unit": "",
+     "label": "C_L при нулевом угле атаки",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типично для несимметричного профиля серии NACA 64."
+    },
+    {
+     "field": "fixedWing.airfoil.clMax",
+     "value": 1.5,
+     "unit": "",
+     "label": "максимальный C_L",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типичное значение для чистого крыла с толстым профилем."
+    },
+    {
+     "field": "fixedWing.airfoil.cd0",
+     "value": 0.009,
+     "unit": "",
+     "label": "профильное сопротивление",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типично для профиля толщиной около 16 %."
+    },
+    {
+     "field": "fixedWing.airfoil.thickness",
+     "value": 0.16,
+     "unit": "",
+     "label": "относительная толщина профиля",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Как у крыльев C-130/Ан-12 (≈14–18 %)."
+    },
+    {
+     "field": "fixedWing.limitLoadFactor",
+     "value": 2.5,
+     "unit": "g",
+     "label": "эксплуатационная перегрузка",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "Нормативное значение для транспортного самолёта."
+    }
+   ]
+  },
+  "ms": 28673,
+  "costUsd": 0.18334299999999998,
+  "steps": [
+   {
+    "name": "разбор",
+    "ms": 8751,
+    "output": 811
+   },
+   {
+    "name": "проект",
+    "ms": 19918,
+    "output": 2333
+   }
+  ],
+  "fixes": []
+ },
+ {
+  "id": "r22-side",
+  "score": {
+   "id": "r22-side",
+   "identified": true,
+   "problems": [],
+   "ratios": [
+    {
+     "name": "rotorDiameter/length",
+     "expected": 2.3968749999999996,
+     "got": 2.451612903225806,
+     "dev": 0.022837195609202166,
+     "ok": true
+    }
+   ],
+   "sizes": [
+    {
+     "field": "rotor.radius",
+     "expected": 3.835,
+     "got": 3.8,
+     "dev": 0.009126466753585416,
+     "ok": true
+    }
+   ]
+  },
+  "image": {
+   "showsAircraft": true,
+   "kind": "drawing",
+   "view": "side",
+   "scaleReference": {
+    "kind": "person",
+    "what": "фигура человека справа от вертолёта, высота около 210 пикселей (от 383 до 592)",
+    "sizeM": 1.8
+   },
+   "counts": {
+    "wings": null,
+    "rotors": 1,
+    "bladesPerRotor": null,
+    "propellers": null
+   },
+   "measured": [
+    {
+     "what": "длина кабины без хвостовой балки",
+     "field": "fuselage.length",
+     "valueM": 3.1,
+     "how": "около 360 пикселей (от 345 до 705) при масштабе ~117 пикселей на метр (человек 1,8 м = 210 пикселей), в 1,7 раза больше роста человека"
+    },
+    {
+     "what": "высота кабины",
+     "field": "fuselage.height",
+     "valueM": 1.6,
+     "how": "около 185 пикселей (от 355 до 540), в 0,9 роста человека"
+    },
+    {
+     "what": "радиус несущего винта",
+     "field": "rotor.radius",
+     "valueM": 3.8,
+     "how": "видимый диск от 90 до 970 пикселей = 880 пикселей ≈ 7,5 м диаметр, в 4,2 раза больше роста человека; радиус половина"
+    },
+    {
+     "what": "радиус хвостового винта",
+     "field": null,
+     "valueM": 0.52,
+     "how": "пунктирный круг диаметром около 122 пикселей ≈ 1,04 м"
+    },
+    {
+     "what": "общая длина от носа до хвостового винта",
+     "field": null,
+     "valueM": 6.9,
+     "how": "от 345 до 1148 пикселей ≈ 803 пикселя, в 3,8 раза больше роста человека"
+    },
+    {
+     "what": "длина полозьев",
+     "field": null,
+     "valueM": 3.6,
+     "how": "от 310 до 732 пикселей ≈ 422 пикселя"
+    }
+   ],
+   "notVisible": [
+    "ширина фюзеляжа (вид только сбоку)",
+    "число лопастей несущего винта",
+    "хорда лопастей",
+    "масса, двигатель и мощность",
+    "материал конструкции",
+    "частота вращения винта"
+   ]
+  },
+  "design": {
+   "name": "Лёгкий одновинтовой вертолёт (по силуэту)",
+   "vehicleClass": "rotor",
+   "summary": "Лёгкий вертолёт классической схемы: один несущий винт, хвостовой винт на балке, полозковое шасси. Размеры кабины и винта сняты с рисунка по фигуре человека 1,8 м, остальное оценено по аналогам типа Robinson R44.",
+   "environment": {
+    "name": "Земля",
+    "g": 9.81,
+    "rho": 1.225,
+    "soundSpeed": 340.3
+   },
+   "fuselage": {
+    "length": 3.1,
+    "width": 1.3,
+    "height": 1.6,
+    "mass": 1000,
+    "dragArea": 0.9
+   },
+   "material": "al7075",
+   "sparWall": 0.003,
+   "powerplant": {
+    "power": 183000,
+    "lapse": "piston",
+    "losses": 0.15
+   },
+   "crewSeats": 4,
+   "fixedWing": null,
+   "rotor": {
+    "rotorCount": 1,
+    "radius": 3.8,
+    "bladeCount": 2,
+    "chord": 0.26,
+    "rpm": 400,
+    "twistDeg": -8,
+    "bladeMass": 25,
+    "armLength": 0,
+    "airfoil": {
+     "cl0": 0,
+     "clMax": 1.3,
+     "cd0": 0.01,
+     "thickness": 0.12
+    }
+   },
+   "flapping": null,
+   "assumptions": [
+    {
+     "field": "fuselage.length",
+     "value": 3.1,
+     "unit": "м",
+     "label": "длина кабины без хвостовой балки",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "≈360 пикселей при эталоне человек 1,8 м = 210 пикселей."
+    },
+    {
+     "field": "fuselage.height",
+     "value": 1.6,
+     "unit": "м",
+     "label": "высота кабины",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "≈185 пикселей по эталону человек 1,8 м."
+    },
+    {
+     "field": "rotor.radius",
+     "value": 3.8,
+     "unit": "м",
+     "label": "радиус несущего винта",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "Видимый диаметр ≈880 пикселей ≈7,5 м по эталону человек 1,8 м."
+    },
+    {
+     "field": "fuselage.width",
+     "value": 1.3,
+     "unit": "м",
+     "label": "ширина кабины",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Вид только сбоку; типично для 4-местной кабины лёгкого вертолёта (R44 ≈1,28 м)."
+    },
+    {
+     "field": "fuselage.mass",
+     "value": 1000,
+     "unit": "кг",
+     "label": "масса без лопастей (корпус, двигатель, топливо, экипаж)",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Аналог R44: взлётная ≈1090 кг минус лопасти."
+    },
+    {
+     "field": "fuselage.dragArea",
+     "value": 0.9,
+     "unit": "м²",
+     "label": "эквивалентная площадь вредного сопротивления",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типично для лёгких вертолётов с открытой втулкой и полозьями."
+    },
+    {
+     "field": "sparWall",
+     "value": 0.003,
+     "unit": "м",
+     "label": "толщина стенки лонжерона лопасти",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типично для металлических лопастей лёгких вертолётов."
+    },
+    {
+     "field": "powerplant.power",
+     "value": 183000,
+     "unit": "Вт",
+     "label": "мощность на валу",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Аналог R44: двигатель Lycoming O-540, взлётная ≈245 л.с."
+    },
+    {
+     "field": "powerplant.losses",
+     "value": 0.15,
+     "unit": "",
+     "label": "потери на хвостовой винт и трансмиссию",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "Типичная доля для одновинтовой схемы с рулевым винтом."
+    },
+    {
+     "field": "crewSeats",
+     "value": 4,
+     "unit": "шт",
+     "label": "число мест",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Размер кабины ≈3,1 м соответствует 4-местному лёгкому вертолёту."
+    },
+    {
+     "field": "rotor.bladeCount",
+     "value": 2,
+     "unit": "шт",
+     "label": "число лопастей",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "На силуэте не определить; у лёгких вертолётов такого размера обычно 2."
+    },
+    {
+     "field": "rotor.chord",
+     "value": 0.26,
+     "unit": "м",
+     "label": "хорда лопасти",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Аналог R44 (≈0,25 м); толщина лопасти на рисунке тоже около 0,1–0,15 м по высоте."
+    },
+    {
+     "field": "rotor.rpm",
+     "value": 400,
+     "unit": "об/мин",
+     "label": "обороты несущего винта",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "Окружная скорость ≈200 м/с при радиусе 3,8 м; у R44 ≈408 об/мин."
+    },
+    {
+     "field": "rotor.twistDeg",
+     "value": -8,
+     "unit": "°",
+     "label": "крутка лопасти",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типичная крутка лопастей лёгких вертолётов."
+    },
+    {
+     "field": "rotor.bladeMass",
+     "value": 25,
+     "unit": "кг",
+     "label": "масса одной лопасти",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Металлическая лопасть длиной ≈3,5 м у лёгкого вертолёта."
+    },
+    {
+     "field": "rotor.armLength",
+     "value": 0,
+     "unit": "м",
+     "label": "плечо винта",
+     "confidence": "high",
+     "origin": "estimated",
+     "reason": "Для одновинтового вертолёта задаётся 0."
+    },
+    {
+     "field": "rotor.airfoil.cl0",
+     "value": 0,
+     "unit": "",
+     "label": "C_L при нулевом угле",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "Лопасти лёгких вертолётов обычно с симметричным профилем типа NACA 0012."
+    },
+    {
+     "field": "rotor.airfoil.clMax",
+     "value": 1.3,
+     "unit": "",
+     "label": "максимальный C_L профиля",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "Типично для NACA 0012 при числах Рейнольдса лопасти."
+    },
+    {
+     "field": "rotor.airfoil.cd0",
+     "value": 0.01,
+     "unit": "",
+     "label": "профильное сопротивление",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "Типичное значение для вертолётного профиля."
+    },
+    {
+     "field": "rotor.airfoil.thickness",
+     "value": 0.12,
+     "unit": "",
+     "label": "относительная толщина профиля",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "NACA 0012 — стандарт для лопастей лёгких вертолётов."
+    }
+   ]
+  },
+  "ms": 29845,
+  "costUsd": 0.0890804,
+  "steps": [
+   {
+    "name": "разбор",
+    "ms": 11102,
+    "output": 919
+   },
+   {
+    "name": "проект",
+    "ms": 18739,
+    "output": 2216
+   }
+  ],
+  "fixes": []
+ },
+ {
+  "id": "r22-top",
+  "score": {
+   "id": "r22-top",
+   "identified": true,
+   "problems": [],
+   "ratios": [
+    {
+     "name": "rotorDiameter/length",
+     "expected": 2.3968749999999996,
+     "got": 2.4741935483870967,
+     "dev": 0.032258064516129226,
+     "ok": true
+    }
+   ],
+   "sizes": [
+    {
+     "field": "rotor.radius",
+     "expected": 3.835,
+     "got": 3.835,
+     "dev": 0,
+     "ok": true
+    }
+   ]
+  },
+  "image": {
+   "showsAircraft": true,
+   "kind": "drawing",
+   "view": "top",
+   "scaleReference": {
+    "kind": "dimension-line",
+    "what": "размерная линия «7,67 м» над диском несущего винта",
+    "sizeM": 7.67
+   },
+   "counts": {
+    "wings": null,
+    "rotors": 1,
+    "bladesPerRotor": 2,
+    "propellers": null
+   },
+   "measured": [
+    {
+     "what": "радиус несущего винта",
+     "field": "rotor.radius",
+     "valueM": 3.835,
+     "how": "половина размерной линии 7,67 м, совпадающей с диаметром пунктирного диска"
+    },
+    {
+     "what": "длина кабины без хвостовой балки",
+     "field": "fuselage.length",
+     "valueM": 3.1,
+     "how": "овал кабины ≈235 px при 580 px на 7,67 м"
+    },
+    {
+     "what": "ширина кабины",
+     "field": "fuselage.width",
+     "valueM": 1.1,
+     "how": "ширина овала ≈84 px при 580 px на 7,67 м"
+    },
+    {
+     "what": "длина хвостовой балки",
+     "field": null,
+     "valueM": 3.4,
+     "how": "≈257 px от кабины до конца балки при 580 px на 7,67 м"
+    },
+    {
+     "what": "хорда лопасти",
+     "field": null,
+     "valueM": 0.2,
+     "how": "ширина полосы лопасти ≈15 px при 580 px на 7,67 м"
+    }
+   ],
+   "notVisible": [
+    "высота фюзеляжа",
+    "диаметр рулевого винта и число его лопастей",
+    "массы корпуса и лопастей",
+    "мощность двигателя",
+    "обороты несущего винта",
+    "материал лопастей",
+    "шасси"
+   ]
+  },
+  "design": {
+   "name": "Лёгкий одновинтовой вертолёт (тип Robinson R22)",
+   "vehicleClass": "rotor",
+   "summary": "Одновинтовой вертолёт с двухлопастным несущим винтом диаметром 7,67 м и рулевым винтом на хвостовой балке. Размеры сняты с чертежа по размерной линии 7,67 м, массы и мощность оценены по аналогу Robinson R22.",
+   "environment": {
+    "name": "Земля",
+    "g": 9.81,
+    "rho": 1.225,
+    "soundSpeed": 340.3
+   },
+   "fuselage": {
+    "length": 3.1,
+    "width": 1.1,
+    "height": 2,
+    "mass": 580,
+    "dragArea": 0.6
+   },
+   "material": "al7075",
+   "sparWall": 0.003,
+   "powerplant": {
+    "power": 97000,
+    "lapse": "piston",
+    "losses": 0.15
+   },
+   "crewSeats": 2,
+   "fixedWing": null,
+   "rotor": {
+    "rotorCount": 1,
+    "radius": 3.835,
+    "bladeCount": 2,
+    "chord": 0.2,
+    "rpm": 530,
+    "twistDeg": -8,
+    "bladeMass": 12,
+    "armLength": 0,
+    "airfoil": {
+     "cl0": 0,
+     "clMax": 1.3,
+     "cd0": 0.01,
+     "thickness": 0.12
+    }
+   },
+   "flapping": null,
+   "assumptions": [
+    {
+     "field": "rotor.radius",
+     "value": 3.835,
+     "unit": "м",
+     "label": "радиус несущего винта",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "Половина размерной линии 7,67 м, совпадающей с диском винта."
+    },
+    {
+     "field": "fuselage.length",
+     "value": 3.1,
+     "unit": "м",
+     "label": "длина кабины без хвостовой балки",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "Овал кабины ≈235 px при 580 px на 7,67 м по размерной линии."
+    },
+    {
+     "field": "fuselage.width",
+     "value": 1.1,
+     "unit": "м",
+     "label": "ширина кабины",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "Ширина овала ≈84 px при масштабе размерной линии 7,67 м."
+    },
+    {
+     "field": "rotor.chord",
+     "value": 0.2,
+     "unit": "м",
+     "label": "хорда лопасти",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "Ширина полосы лопасти ≈15 px при масштабе размерной линии 7,67 м."
+    },
+    {
+     "field": "rotor.rotorCount",
+     "value": 1,
+     "unit": "шт",
+     "label": "число несущих винтов",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "На чертеже виден один несущий винт."
+    },
+    {
+     "field": "rotor.bladeCount",
+     "value": 2,
+     "unit": "шт",
+     "label": "число лопастей",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "На чертеже видны две лопасти."
+    },
+    {
+     "field": "rotor.armLength",
+     "value": 0,
+     "unit": "м",
+     "label": "плечо винта",
+     "confidence": "high",
+     "origin": "estimated",
+     "reason": "Для одновинтового вертолёта плечо равно нулю."
+    },
+    {
+     "field": "fuselage.height",
+     "value": 2,
+     "unit": "м",
+     "label": "высота фюзеляжа",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Сбоку не видно; по аналогу R22 высотой около 2,7 м с втулкой, кабина ~2 м."
+    },
+    {
+     "field": "fuselage.mass",
+     "value": 580,
+     "unit": "кг",
+     "label": "масса без лопастей",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Взлётная масса R22 ~620 кг минус две лопасти."
+    },
+    {
+     "field": "fuselage.dragArea",
+     "value": 0.6,
+     "unit": "м²",
+     "label": "площадь вредного сопротивления",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типично для лёгкого вертолёта с открытой втулкой и полозьями."
+    },
+    {
+     "field": "powerplant.power",
+     "value": 97000,
+     "unit": "Вт",
+     "label": "мощность на валу",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Двигатель Lycoming O-360 у R22, дросселированный до ~130 л.с."
+    },
+    {
+     "field": "powerplant.losses",
+     "value": 0.15,
+     "unit": "доля",
+     "label": "потери на рулевой винт и трансмиссию",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "Типично 10–15 % для одновинтовой схемы."
+    },
+    {
+     "field": "crewSeats",
+     "value": 2,
+     "unit": "мест",
+     "label": "число мест",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Узкая кабина ~1,1 м, как у двухместного R22."
+    },
+    {
+     "field": "rotor.rpm",
+     "value": 530,
+     "unit": "об/мин",
+     "label": "обороты несущего винта",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "У R22 около 530 об/мин при окружной скорости ~213 м/с."
+    },
+    {
+     "field": "rotor.twistDeg",
+     "value": -8,
+     "unit": "°",
+     "label": "крутка лопасти",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типичное значение для лёгких вертолётов."
+    },
+    {
+     "field": "rotor.bladeMass",
+     "value": 12,
+     "unit": "кг",
+     "label": "масса лопасти",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Металлическая лопасть длиной ~3,8 м с хордой 0,2 м."
+    },
+    {
+     "field": "rotor.airfoil.cl0",
+     "value": 0,
+     "unit": "",
+     "label": "C_L при нулевом угле",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "Лопасти обычно с симметричным или почти симметричным профилем."
+    },
+    {
+     "field": "rotor.airfoil.clMax",
+     "value": 1.3,
+     "unit": "",
+     "label": "максимальный C_L",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "Типично для профиля NACA 0012 на числах Re лопасти."
+    },
+    {
+     "field": "rotor.airfoil.cd0",
+     "value": 0.01,
+     "unit": "",
+     "label": "профильное сопротивление",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "Типично для профиля лопасти."
+    },
+    {
+     "field": "rotor.airfoil.thickness",
+     "value": 0.12,
+     "unit": "",
+     "label": "относительная толщина",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "Профиль типа NACA 0012."
+    },
+    {
+     "field": "sparWall",
+     "value": 0.003,
+     "unit": "м",
+     "label": "толщина стенки лонжерона",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Металлический лонжерон лопасти лёгкого вертолёта."
+    },
+    {
+     "field": "environment.g",
+     "value": 9.81,
+     "unit": "м/с²",
+     "label": "ускорение свободного падения",
+     "confidence": "high",
+     "origin": "estimated",
+     "reason": "Земля по умолчанию."
+    },
+    {
+     "field": "environment.rho",
+     "value": 1.225,
+     "unit": "кг/м³",
+     "label": "плотность воздуха",
+     "confidence": "high",
+     "origin": "estimated",
+     "reason": "Земля, уровень моря."
+    },
+    {
+     "field": "environment.soundSpeed",
+     "value": 340.3,
+     "unit": "м/с",
+     "label": "скорость звука",
+     "confidence": "high",
+     "origin": "estimated",
+     "reason": "Земля, уровень моря."
+    }
+   ]
+  },
+  "ms": 26755,
+  "costUsd": 0.0884444,
+  "steps": [
+   {
+    "name": "разбор",
+    "ms": 8152,
+    "output": 768
+   },
+   {
+    "name": "проект",
+    "ms": 18601,
+    "output": 2365
+   }
+  ],
+  "fixes": []
+ },
+ {
+  "id": "big-heli-side",
+  "score": {
+   "id": "big-heli-side",
+   "identified": true,
+   "problems": [],
+   "ratios": [
+    {
+     "name": "rotorDiameter/length",
+     "expected": 1.9363636363636365,
+     "got": 1.965217391304348,
+     "dev": 0.014901000204123216,
+     "ok": true
+    }
+   ],
+   "sizes": [
+    {
+     "field": "rotor.radius",
+     "expected": 10.65,
+     "got": 11.3,
+     "dev": 0.06103286384976525,
+     "ok": true
+    }
+   ]
+  },
+  "image": {
+   "showsAircraft": true,
+   "kind": "drawing",
+   "view": "side",
+   "scaleReference": {
+    "kind": "person",
+    "what": "фигура человека справа от вертолёта",
+    "sizeM": 1.8
+   },
+   "counts": {
+    "wings": null,
+    "rotors": 1,
+    "bladesPerRotor": 2,
+    "propellers": null
+   },
+   "measured": [
+    {
+     "what": "длина кабины (без хвостовой балки)",
+     "field": "fuselage.length",
+     "valueM": 11.5,
+     "how": "кабина ≈ 485 px при росте человека ≈ 77 px (1,8 м): 485/77×1,8 ≈ 11,3–11,5 м"
+    },
+    {
+     "what": "высота кабины",
+     "field": "fuselage.height",
+     "valueM": 3.8,
+     "how": "≈ 163 px, в 2,1 раза выше человека"
+    },
+    {
+     "what": "радиус несущего винта",
+     "field": "rotor.radius",
+     "valueM": 11.3,
+     "how": "диаметр диска ≈ 968 px ≈ 12,6 роста человека ≈ 22,6 м"
+    },
+    {
+     "what": "радиус рулевого винта",
+     "field": "rotor.armLength",
+     "valueM": 2.1,
+     "how": "пунктирный круг ≈ 178 px в диаметре ≈ 4,2 м; поле условное — плечо рулевого винта от оси несущего ≈ 13,7 м"
+    }
+   ],
+   "notVisible": [
+    "ширина корпуса (вид только сбоку)",
+    "масса аппарата и топлива",
+    "мощность двигателя",
+    "обороты несущего винта",
+    "хорда и материал лопастей",
+    "число лопастей рулевого винта"
+   ]
+  },
+  "design": {
+   "name": "Лёгкий одновинтовой вертолёт (схема)",
+   "vehicleClass": "rotor",
+   "summary": "Одновинтовой вертолёт с двухлопастным несущим винтом, рулевым винтом и полозковым шасси. Размеры сняты с чертежа по фигуре человека (1,8 м); по ним аппарат получается размером с тяжёлый вертолёт класса Ми-8, поэтому массы и мощность оценены по этому классу.",
+   "environment": {
+    "name": "Земля",
+    "g": 9.81,
+    "rho": 1.225,
+    "soundSpeed": 340.3
+   },
+   "fuselage": {
+    "length": 11.5,
+    "width": 2.3,
+    "height": 3.8,
+    "mass": 9600,
+    "dragArea": 2.5
+   },
+   "material": "al7075",
+   "sparWall": 0.006,
+   "powerplant": {
+    "power": 3000000,
+    "lapse": "turbine",
+    "losses": 0.15
+   },
+   "crewSeats": 20,
+   "fixedWing": null,
+   "rotor": {
+    "rotorCount": 1,
+    "radius": 11.3,
+    "bladeCount": 2,
+    "chord": 0.8,
+    "rpm": 182,
+    "twistDeg": -8,
+    "bladeMass": 200,
+    "armLength": 0,
+    "airfoil": {
+     "cl0": 0,
+     "clMax": 1.3,
+     "cd0": 0.009,
+     "thickness": 0.12
+    }
+   },
+   "flapping": null,
+   "assumptions": [
+    {
+     "field": "fuselage.length",
+     "value": 11.5,
+     "unit": "м",
+     "label": "длина кабины без хвостовой балки",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "≈485 px при росте человека-эталона 77 px (1,8 м)."
+    },
+    {
+     "field": "fuselage.height",
+     "value": 3.8,
+     "unit": "м",
+     "label": "высота кабины",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "≈163 px, в 2,1 раза выше фигуры человека 1,8 м."
+    },
+    {
+     "field": "rotor.radius",
+     "value": 11.3,
+     "unit": "м",
+     "label": "радиус несущего винта",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "Диаметр диска ≈968 px ≈12,6 роста человека-эталона."
+    },
+    {
+     "field": "fuselage.width",
+     "value": 2.3,
+     "unit": "м",
+     "label": "ширина корпуса",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Вид только сбоку; принято по вертолётам класса Ми-8 с кабиной такой длины."
+    },
+    {
+     "field": "fuselage.mass",
+     "value": 9600,
+     "unit": "кг",
+     "label": "масса без лопастей (корпус, двигатели, топливо, экипаж, груз)",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Взлётная масса ≈10 т по вертолётам с винтом ~22 м (Ми-8 ~11 т) минус лопасти."
+    },
+    {
+     "field": "fuselage.dragArea",
+     "value": 2.5,
+     "unit": "м²",
+     "label": "площадь вредного сопротивления",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типично для транспортных вертолётов 10-тонного класса."
+    },
+    {
+     "field": "sparWall",
+     "value": 0.006,
+     "unit": "м",
+     "label": "толщина стенки лонжерона лопасти",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Прессованные алюминиевые лонжероны лопастей большого винта."
+    },
+    {
+     "field": "powerplant.power",
+     "value": 3000000,
+     "unit": "Вт",
+     "label": "мощность на валах",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Ми-8 с винтом 21,3 м имеет 2×1,64 МВт."
+    },
+    {
+     "field": "powerplant.losses",
+     "value": 0.15,
+     "unit": "доля",
+     "label": "потери на рулевой винт и трансмиссию",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "Типичная доля для одновинтовой схемы с рулевым винтом."
+    },
+    {
+     "field": "crewSeats",
+     "value": 20,
+     "unit": "шт",
+     "label": "места экипажа и пассажиров",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Кабина длиной ~11,5 м и высотой ~3,8 м вмещает транспортный салон."
+    },
+    {
+     "field": "rotor.rotorCount",
+     "value": 1,
+     "unit": "шт",
+     "label": "число несущих винтов",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "На чертеже один несущий винт."
+    },
+    {
+     "field": "rotor.bladeCount",
+     "value": 2,
+     "unit": "шт",
+     "label": "число лопастей",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "В профиль видны две лопасти."
+    },
+    {
+     "field": "rotor.chord",
+     "value": 0.8,
+     "unit": "м",
+     "label": "хорда лопасти",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Двухлопастному винту такого размера нужна хорда шире, чем 0,52 м у Ми-8."
+    },
+    {
+     "field": "rotor.rpm",
+     "value": 182,
+     "unit": "об/мин",
+     "label": "обороты несущего винта",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "Окружная скорость конца лопасти ≈215 м/с при R=11,3 м."
+    },
+    {
+     "field": "rotor.twistDeg",
+     "value": -8,
+     "unit": "°",
+     "label": "крутка лопасти",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "Типичная крутка лопастей вертолётов."
+    },
+    {
+     "field": "rotor.bladeMass",
+     "value": 200,
+     "unit": "кг",
+     "label": "масса одной лопасти",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Лопасть Ми-8 (~10,6 м) около 140 кг; длиннее и шире — больше."
+    },
+    {
+     "field": "rotor.armLength",
+     "value": 0,
+     "unit": "м",
+     "label": "плечо (для вертолёта 0)",
+     "confidence": "high",
+     "origin": "estimated",
+     "reason": "По определению поля для одновинтового вертолёта."
+    },
+    {
+     "field": "rotor.airfoil.cl0",
+     "value": 0,
+     "unit": "",
+     "label": "C_L при нулевом угле",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "Почти симметричный вертолётный профиль."
+    },
+    {
+     "field": "rotor.airfoil.clMax",
+     "value": 1.3,
+     "unit": "",
+     "label": "максимальный C_L",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "Типично для профилей NACA 0012 / NACA 230."
+    },
+    {
+     "field": "rotor.airfoil.cd0",
+     "value": 0.009,
+     "unit": "",
+     "label": "профильное сопротивление",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "Типично для вертолётных лопастей."
+    },
+    {
+     "field": "rotor.airfoil.thickness",
+     "value": 0.12,
+     "unit": "",
+     "label": "относительная толщина профиля",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "Стандартный 12 % вертолётный профиль."
+    }
+   ]
+  },
+  "ms": 31435,
+  "costUsd": 0.0952964,
+  "steps": [
+   {
+    "name": "разбор",
+    "ms": 7299,
+    "output": 706
+   },
+   {
+    "name": "проект",
+    "ms": 24133,
+    "output": 2787
+   }
+  ],
+  "fixes": []
+ },
+ {
+  "id": "heli3-top",
+  "score": {
+   "id": "heli3-top",
+   "identified": true,
+   "problems": [],
+   "ratios": [
+    {
+     "name": "rotorDiameter/length",
+     "expected": 2.4444444444444446,
+     "got": 2.5,
+     "dev": 0.022727272727272707,
+     "ok": true
+    }
+   ],
+   "sizes": []
+  },
+  "image": {
+   "showsAircraft": true,
+   "kind": "drawing",
+   "view": "top",
+   "scaleReference": {
+    "kind": "none",
+    "what": "эталона масштаба нет; масштаб принят по типу аппарата — лёгкий вертолёт с несущим винтом диаметром около 10 м",
+    "sizeM": null
+   },
+   "counts": {
+    "wings": null,
+    "rotors": 1,
+    "bladesPerRotor": 3,
+    "propellers": null
+   },
+   "measured": [
+    {
+     "what": "радиус несущего винта",
+     "field": "rotor.radius",
+     "valueM": 5,
+     "how": "принят по типу лёгкого вертолёта (диаметр ~10 м); на рисунке радиус ~337 px"
+    },
+    {
+     "what": "длина кабины без хвостовой балки",
+     "field": "fuselage.length",
+     "valueM": 4,
+     "how": "кабина ~270 px против радиуса винта ~337 px, т.е. 0,8 радиуса"
+    },
+    {
+     "what": "ширина кабины",
+     "field": "fuselage.width",
+     "valueM": 1.5,
+     "how": "ширина ~100 px, 0,3 радиуса винта"
+    }
+   ],
+   "notVisible": [
+    "высота корпуса",
+    "масса и мощность двигателя",
+    "размер рулевого винта",
+    "хорда лопастей точно (по рисунку ~0,3 м)",
+    "материал"
+   ]
+  },
+  "design": {
+   "name": "Лёгкий вертолёт с трёхлопастным несущим винтом",
+   "vehicleClass": "rotor",
+   "summary": "Лёгкий вертолёт классической схемы: кабина, хвостовая балка с рулевым винтом, трёхлопастный несущий винт. Эталона масштаба на рисунке нет, радиус винта 5 м принят по типу аппарата, остальные размеры сняты по пропорциям рисунка.",
+   "environment": {
+    "name": "Земля",
+    "g": 9.81,
+    "rho": 1.225,
+    "soundSpeed": 340.3
+   },
+   "fuselage": {
+    "length": 4,
+    "width": 1.5,
+    "height": 1.6,
+    "mass": 1000,
+    "dragArea": 0.6
+   },
+   "material": "gfrp",
+   "sparWall": 0.004,
+   "powerplant": {
+    "power": 250000,
+    "lapse": "turbine",
+    "losses": 0.15
+   },
+   "crewSeats": 4,
+   "fixedWing": null,
+   "rotor": {
+    "rotorCount": 1,
+    "radius": 5,
+    "bladeCount": 3,
+    "chord": 0.3,
+    "rpm": 400,
+    "twistDeg": -8,
+    "bladeMass": 30,
+    "armLength": 0,
+    "airfoil": {
+     "cl0": 0,
+     "clMax": 1.4,
+     "cd0": 0.01,
+     "thickness": 0.12
+    }
+   },
+   "flapping": null,
+   "assumptions": [
+    {
+     "field": "rotor.radius",
+     "value": 5,
+     "unit": "м",
+     "label": "радиус несущего винта",
+     "confidence": "low",
+     "origin": "image",
+     "reason": "Эталона нет; принят по типу лёгкого вертолёта (диаметр ~10 м), на рисунке ~337 px."
+    },
+    {
+     "field": "fuselage.length",
+     "value": 4,
+     "unit": "м",
+     "label": "длина кабины без хвостовой балки",
+     "confidence": "low",
+     "origin": "image",
+     "reason": "Кабина ~0,8 радиуса винта на рисунке."
+    },
+    {
+     "field": "fuselage.width",
+     "value": 1.5,
+     "unit": "м",
+     "label": "ширина кабины",
+     "confidence": "low",
+     "origin": "image",
+     "reason": "Ширина ~0,3 радиуса винта на рисунке."
+    },
+    {
+     "field": "rotor.chord",
+     "value": 0.3,
+     "unit": "м",
+     "label": "хорда лопасти",
+     "confidence": "low",
+     "origin": "image",
+     "reason": "Ширина лопасти на рисунке ~0,06 радиуса."
+    },
+    {
+     "field": "rotor.rotorCount",
+     "value": 1,
+     "unit": "шт",
+     "label": "число несущих винтов",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "На рисунке один несущий винт."
+    },
+    {
+     "field": "rotor.bladeCount",
+     "value": 3,
+     "unit": "шт",
+     "label": "число лопастей",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "На рисунке видны три лопасти."
+    },
+    {
+     "field": "fuselage.height",
+     "value": 1.6,
+     "unit": "м",
+     "label": "высота корпуса",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Не видна на виде сверху; по кабине лёгкого вертолёта под сидящего человека."
+    },
+    {
+     "field": "fuselage.mass",
+     "value": 1000,
+     "unit": "кг",
+     "label": "масса без лопастей: конструкция, двигатель, топливо, экипаж",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Лёгкие вертолёты с винтом ~10 м (Bell 206, AS350) имеют взлётную массу 1400–2200 кг; взята нижняя оценка."
+    },
+    {
+     "field": "fuselage.dragArea",
+     "value": 0.6,
+     "unit": "м²",
+     "label": "площадь вредного сопротивления",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типично 0,5–1 м² для лёгких вертолётов."
+    },
+    {
+     "field": "powerplant.power",
+     "value": 250000,
+     "unit": "Вт",
+     "label": "мощность на валу",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Уровень Bell 206 (~300 кВт) с запасом в сторону меньшего."
+    },
+    {
+     "field": "powerplant.losses",
+     "value": 0.15,
+     "unit": "доля",
+     "label": "потери на рулевой винт и трансмиссию",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "Типично 10–15 % для одновинтовой схемы."
+    },
+    {
+     "field": "crewSeats",
+     "value": 4,
+     "unit": "шт",
+     "label": "число мест",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Кабина 4×1,5 м вмещает около четырёх мест."
+    },
+    {
+     "field": "rotor.rpm",
+     "value": 400,
+     "unit": "об/мин",
+     "label": "обороты несущего винта",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "Окружная скорость ~210 м/с при радиусе 5 м."
+    },
+    {
+     "field": "rotor.twistDeg",
+     "value": -8,
+     "unit": "°",
+     "label": "крутка лопасти",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "Типичная крутка лопастей вертолёта."
+    },
+    {
+     "field": "rotor.bladeMass",
+     "value": 30,
+     "unit": "кг",
+     "label": "масса лопасти",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Лопасти лёгких вертолётов длиной ~5 м весят 25–40 кг."
+    },
+    {
+     "field": "rotor.armLength",
+     "value": 0,
+     "unit": "м",
+     "label": "плечо винта",
+     "confidence": "high",
+     "origin": "estimated",
+     "reason": "Для одновинтового вертолёта 0."
+    },
+    {
+     "field": "rotor.airfoil.cl0",
+     "value": 0,
+     "unit": "",
+     "label": "C_L при нулевом угле",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "Симметричный профиль типа NACA 0012."
+    },
+    {
+     "field": "rotor.airfoil.clMax",
+     "value": 1.4,
+     "unit": "",
+     "label": "максимальный C_L",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "Типично для профилей лопастей."
+    },
+    {
+     "field": "rotor.airfoil.cd0",
+     "value": 0.01,
+     "unit": "",
+     "label": "профильное сопротивление",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "Типично для NACA 0012 при рабочих числах Рейнольдса."
+    },
+    {
+     "field": "rotor.airfoil.thickness",
+     "value": 0.12,
+     "unit": "",
+     "label": "относительная толщина",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "Типичный профиль NACA 0012."
+    },
+    {
+     "field": "sparWall",
+     "value": 0.004,
+     "unit": "м",
+     "label": "толщина стенки лонжерона",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типично для композитного лонжерона лопасти."
+    }
+   ]
+  },
+  "ms": 23976,
+  "costUsd": 0.0802084,
+  "steps": [
+   {
+    "name": "разбор",
+    "ms": 5887,
+    "output": 599
+   },
+   {
+    "name": "проект",
+    "ms": 18087,
+    "output": 2166
+   }
+  ],
+  "fixes": []
+ },
+ {
+  "id": "quad-top",
+  "score": {
+   "id": "quad-top",
+   "identified": true,
+   "problems": [],
+   "ratios": [
+    {
+     "name": "arm/radius",
+     "expected": 1.4583333333333333,
+     "got": 1.44,
+     "dev": 0.012571428571428567,
+     "ok": true
+    }
+   ],
+   "sizes": []
+  },
+  "image": {
+   "showsAircraft": true,
+   "kind": "drawing",
+   "view": "top",
+   "scaleReference": {
+    "kind": "none",
+    "what": "эталона масштаба нет; масштаб принят по типу аппарата: квадрокоптер массой 1,4 кг (класс DJI Phantom, диагональ между осями моторов ~0,35 м)",
+    "sizeM": null
+   },
+   "counts": {
+    "wings": null,
+    "rotors": 4,
+    "bladesPerRotor": 2,
+    "propellers": null
+   },
+   "measured": [
+    {
+     "what": "длина луча от центра до оси мотора",
+     "field": "rotor.armLength",
+     "valueM": 0.18,
+     "how": "оси моторов по углам квадрата 366 px; расстояние центр–мотор ≈258 px; при принятой диагонали между осями ~0,36 м (класс 1,4 кг) это ≈0,18 м"
+    },
+    {
+     "what": "радиус несущего винта",
+     "field": "rotor.radius",
+     "valueM": 0.125,
+     "how": "радиус диска 177 px, т.е. 0,69 от длины луча (258 px) → ≈0,125 м (винт ~10 дюймов)"
+    },
+    {
+     "what": "длина корпуса",
+     "field": "fuselage.length",
+     "valueM": 0.13,
+     "how": "сторона квадратного корпуса 192 px ≈0,74 длины луча → ≈0,13 м"
+    },
+    {
+     "what": "ширина корпуса",
+     "field": "fuselage.width",
+     "valueM": 0.13,
+     "how": "корпус квадратный, ширина равна длине"
+    }
+   ],
+   "notVisible": [
+    "высота корпуса (вид только сверху)",
+    "масса батареи и распределение массы",
+    "мощность и обороты моторов",
+    "материал рамы",
+    "абсолютный масштаб — нет эталона, размеры оценены по типу аппарата и заданной массе"
+   ]
+  },
+  "design": {
+   "name": "Квадрокоптер 1,4 кг",
+   "vehicleClass": "rotor",
+   "summary": "Квадрокоптер схемы X с четырьмя двухлопастными винтами на лучах от квадратного корпуса. Масса задана пользователем, размеры сняты с рисунка при масштабе, принятом по классу аппарата (DJI Phantom).",
+   "environment": {
+    "name": "Земля",
+    "g": 9.81,
+    "rho": 1.225,
+    "soundSpeed": 340.3
+   },
+   "fuselage": {
+    "length": 0.13,
+    "width": 0.13,
+    "height": 0.08,
+    "mass": 1.38,
+    "dragArea": 0.01
+   },
+   "material": "cfrp",
+   "sparWall": 0.0008,
+   "powerplant": {
+    "power": 400,
+    "lapse": "none",
+    "losses": 0.2
+   },
+   "crewSeats": 0,
+   "fixedWing": null,
+   "rotor": {
+    "rotorCount": 4,
+    "radius": 0.125,
+    "bladeCount": 2,
+    "chord": 0.02,
+    "rpm": 7000,
+    "twistDeg": -12,
+    "bladeMass": 0.0025,
+    "armLength": 0.18,
+    "airfoil": {
+     "cl0": 0.3,
+     "clMax": 1.2,
+     "cd0": 0.015,
+     "thickness": 0.1
+    }
+   },
+   "flapping": null,
+   "assumptions": [
+    {
+     "field": "fuselage.mass",
+     "value": 1.38,
+     "unit": "кг",
+     "label": "масса без лопастей",
+     "confidence": "high",
+     "origin": "user",
+     "reason": "Полная масса 1,4 кг задана пользователем, за вычетом восьми лопастей по ~2,5 г."
+    },
+    {
+     "field": "rotor.armLength",
+     "value": 0.18,
+     "unit": "м",
+     "label": "длина луча",
+     "confidence": "low",
+     "origin": "image",
+     "reason": "Снято с рисунка, масштаб принят по классу 1,4 кг (DJI Phantom, диагональ ~0,35 м)."
+    },
+    {
+     "field": "rotor.radius",
+     "value": 0.125,
+     "unit": "м",
+     "label": "радиус винта",
+     "confidence": "low",
+     "origin": "image",
+     "reason": "Радиус диска 0,69 длины луча на рисунке."
+    },
+    {
+     "field": "fuselage.length",
+     "value": 0.13,
+     "unit": "м",
+     "label": "длина корпуса",
+     "confidence": "low",
+     "origin": "image",
+     "reason": "Сторона корпуса ≈0,74 длины луча на рисунке."
+    },
+    {
+     "field": "fuselage.width",
+     "value": 0.13,
+     "unit": "м",
+     "label": "ширина корпуса",
+     "confidence": "low",
+     "origin": "image",
+     "reason": "Корпус квадратный на рисунке."
+    },
+    {
+     "field": "fuselage.height",
+     "value": 0.08,
+     "unit": "м",
+     "label": "высота корпуса",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Не видно на виде сверху; типично для дронов класса Phantom."
+    },
+    {
+     "field": "fuselage.dragArea",
+     "value": 0.01,
+     "unit": "м²",
+     "label": "площадь вредного сопротивления",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Фронтальная площадь корпуса и лучей ~0,01 м² при C_D≈1."
+    },
+    {
+     "field": "sparWall",
+     "value": 0.0008,
+     "unit": "м",
+     "label": "толщина стенки лонжерона лопасти",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типично для пластиковых/композитных винтов 10 дюймов."
+    },
+    {
+     "field": "powerplant.power",
+     "value": 400,
+     "unit": "Вт",
+     "label": "суммарная мощность моторов",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Тяговооружённость ~2 для дрона 1,4 кг с винтами 10 дюймов."
+    },
+    {
+     "field": "powerplant.losses",
+     "value": 0.2,
+     "unit": "",
+     "label": "потери в моторах и регуляторах",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "КПД бесколлекторных моторов с регуляторами ~80 %."
+    },
+    {
+     "field": "rotor.rotorCount",
+     "value": 4,
+     "unit": "шт",
+     "label": "число винтов",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "На рисунке четыре винта."
+    },
+    {
+     "field": "rotor.bladeCount",
+     "value": 2,
+     "unit": "шт",
+     "label": "лопастей на винт",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "На рисунке двухлопастные винты."
+    },
+    {
+     "field": "rotor.chord",
+     "value": 0.02,
+     "unit": "м",
+     "label": "хорда лопасти",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Средняя хорда винтов 10 дюймов ~2 см."
+    },
+    {
+     "field": "rotor.rpm",
+     "value": 7000,
+     "unit": "об/мин",
+     "label": "обороты винта",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типичные обороты висения винтов 10 дюймов у дрона 1,4 кг."
+    },
+    {
+     "field": "rotor.twistDeg",
+     "value": -12,
+     "unit": "°",
+     "label": "крутка лопасти",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "Типично для пропеллеров мультикоптеров."
+    },
+    {
+     "field": "rotor.bladeMass",
+     "value": 0.0025,
+     "unit": "кг",
+     "label": "масса лопасти",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Винт 10 дюймов весит ~5 г, по 2,5 г на лопасть."
+    },
+    {
+     "field": "rotor.airfoil.cl0",
+     "value": 0.3,
+     "unit": "",
+     "label": "C_L при нулевом угле",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Выпуклый тонкий профиль пропеллера."
+    },
+    {
+     "field": "rotor.airfoil.clMax",
+     "value": 1.2,
+     "unit": "",
+     "label": "максимальный C_L",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Низкие числа Рейнольдса малых винтов."
+    },
+    {
+     "field": "rotor.airfoil.cd0",
+     "value": 0.015,
+     "unit": "",
+     "label": "профильное сопротивление",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Малые числа Рейнольдса повышают сопротивление."
+    },
+    {
+     "field": "rotor.airfoil.thickness",
+     "value": 0.1,
+     "unit": "",
+     "label": "относительная толщина",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типично для пластиковых пропеллеров."
+    }
+   ]
+  },
+  "ms": 25078,
+  "costUsd": 0.0827244,
+  "steps": [
+   {
+    "name": "разбор",
+    "ms": 9370,
+    "output": 784
+   },
+   {
+    "name": "проект",
+    "ms": 15706,
+    "output": 2063
+   }
+  ],
+  "fixes": []
+ },
+ {
+  "id": "hexa-top",
+  "score": {
+   "id": "hexa-top",
+   "identified": true,
+   "problems": [],
+   "ratios": [
+    {
+     "name": "arm/radius",
+     "expected": 2.75,
+     "got": 2.75,
+     "dev": 0,
+     "ok": true
+    }
+   ],
+   "sizes": [
+    {
+     "field": "rotor.armLength",
+     "expected": 0.55,
+     "got": 0.55,
+     "dev": 0,
+     "ok": true
+    }
+   ]
+  },
+  "image": {
+   "showsAircraft": true,
+   "kind": "drawing",
+   "view": "top",
+   "scaleReference": {
+    "kind": "dimension-line",
+    "what": "размерная линия с подписью 1,10 м (≈500 px)",
+    "sizeM": 1.1
+   },
+   "counts": {
+    "wings": null,
+    "rotors": 6,
+    "bladesPerRotor": 2,
+    "propellers": null
+   },
+   "measured": [
+    {
+     "what": "длина корпуса (сторона квадрата)",
+     "field": "fuselage.length",
+     "valueM": 0.35,
+     "how": "≈160 px при масштабе 500 px = 1,10 м"
+    },
+    {
+     "what": "ширина корпуса",
+     "field": "fuselage.width",
+     "valueM": 0.35,
+     "how": "≈160 px при масштабе 500 px = 1,10 м"
+    },
+    {
+     "what": "радиус несущего винта",
+     "field": "rotor.radius",
+     "valueM": 0.2,
+     "how": "радиус пунктирного круга ≈91 px при 500 px = 1,10 м"
+    },
+    {
+     "what": "длина луча от центра до оси мотора",
+     "field": "rotor.armLength",
+     "valueM": 0.55,
+     "how": "≈250 px от центра до оси мотора при 500 px = 1,10 м"
+    }
+   ],
+   "notVisible": [
+    "высота корпуса",
+    "масса аппарата и батареи",
+    "мощность моторов и обороты винтов",
+    "материал рамы",
+    "хорда лопастей"
+   ]
+  },
+  "design": {
+   "name": "Гексакоптер 1,1 м",
+   "vehicleClass": "rotor",
+   "summary": "Шестироторный мультикоптер с квадратным центральным корпусом и шестью лучами, на концах которых двухлопастные винты. Размеры сняты с чертежа по размерной линии 1,10 м, остальное оценено по аналогичным гексакоптерам (класс DJI S900).",
+   "environment": {
+    "name": "Земля",
+    "g": 9.81,
+    "rho": 1.225,
+    "soundSpeed": 340.3
+   },
+   "fuselage": {
+    "length": 0.35,
+    "width": 0.35,
+    "height": 0.15,
+    "mass": 6,
+    "dragArea": 0.05
+   },
+   "material": "cfrp",
+   "sparWall": 0.001,
+   "powerplant": {
+    "power": 3000,
+    "lapse": "none",
+    "losses": 0.2
+   },
+   "crewSeats": 0,
+   "fixedWing": null,
+   "rotor": {
+    "rotorCount": 6,
+    "radius": 0.2,
+    "bladeCount": 2,
+    "chord": 0.035,
+    "rpm": 5000,
+    "twistDeg": -12,
+    "bladeMass": 0.02,
+    "armLength": 0.55,
+    "airfoil": {
+     "cl0": 0.25,
+     "clMax": 1.2,
+     "cd0": 0.015,
+     "thickness": 0.1
+    }
+   },
+   "flapping": null,
+   "assumptions": [
+    {
+     "field": "fuselage.length",
+     "value": 0.35,
+     "unit": "м",
+     "label": "длина корпуса",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "≈160 px при размерной линии 500 px = 1,10 м"
+    },
+    {
+     "field": "fuselage.width",
+     "value": 0.35,
+     "unit": "м",
+     "label": "ширина корпуса",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "≈160 px при размерной линии 500 px = 1,10 м"
+    },
+    {
+     "field": "fuselage.height",
+     "value": 0.15,
+     "unit": "м",
+     "label": "высота корпуса",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "не видна на виде сверху; типично для гексакоптеров такого размера"
+    },
+    {
+     "field": "fuselage.mass",
+     "value": 6,
+     "unit": "кг",
+     "label": "масса без лопастей (рама, моторы, батарея, полезная нагрузка)",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "по аналогии с гексакоптерами класса DJI S900 (взлётная 4–8 кг)"
+    },
+    {
+     "field": "fuselage.dragArea",
+     "value": 0.05,
+     "unit": "м²",
+     "label": "площадь вредного сопротивления",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "корпус 0,35×0,15 м с лучами и моторами, C_D≈1"
+    },
+    {
+     "field": "sparWall",
+     "value": 0.001,
+     "unit": "м",
+     "label": "толщина стенки лонжерона лопасти",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "типично для углепластиковых пропеллеров 15–16 дюймов"
+    },
+    {
+     "field": "powerplant.power",
+     "value": 3000,
+     "unit": "Вт",
+     "label": "суммарная мощность моторов",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "шесть моторов по ~500 Вт, как у гексакоптеров с винтами 15–16 дюймов"
+    },
+    {
+     "field": "powerplant.losses",
+     "value": 0.2,
+     "unit": "",
+     "label": "потери (КПД электромоторов и регуляторов)",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "КПД бесколлекторных моторов с регуляторами ~80 %"
+    },
+    {
+     "field": "rotor.rotorCount",
+     "value": 6,
+     "unit": "шт",
+     "label": "число винтов",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "на чертеже видно шесть винтов"
+    },
+    {
+     "field": "rotor.radius",
+     "value": 0.2,
+     "unit": "м",
+     "label": "радиус винта",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "радиус пунктирного круга ≈91 px при 500 px = 1,10 м"
+    },
+    {
+     "field": "rotor.bladeCount",
+     "value": 2,
+     "unit": "шт",
+     "label": "лопастей на винт",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "на каждом винте видны две лопасти"
+    },
+    {
+     "field": "rotor.chord",
+     "value": 0.035,
+     "unit": "м",
+     "label": "хорда лопасти",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "типично для пропеллеров диаметром 0,4 м"
+    },
+    {
+     "field": "rotor.rpm",
+     "value": 5000,
+     "unit": "об/мин",
+     "label": "обороты винта",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "типичные обороты висения винтов 15–16 дюймов"
+    },
+    {
+     "field": "rotor.twistDeg",
+     "value": -12,
+     "unit": "°",
+     "label": "крутка лопасти",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "типично для пропеллеров мультикоптеров −10…−15°"
+    },
+    {
+     "field": "rotor.bladeMass",
+     "value": 0.02,
+     "unit": "кг",
+     "label": "масса одной лопасти",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "углепластиковый пропеллер 15–16 дюймов весит ~40 г на пару"
+    },
+    {
+     "field": "rotor.armLength",
+     "value": 0.55,
+     "unit": "м",
+     "label": "расстояние от центра до оси винта",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "≈250 px от центра до оси мотора при 500 px = 1,10 м"
+    },
+    {
+     "field": "rotor.airfoil.cl0",
+     "value": 0.25,
+     "unit": "",
+     "label": "C_L при нулевом угле атаки",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "типичный выпуклый профиль пропеллера"
+    },
+    {
+     "field": "rotor.airfoil.clMax",
+     "value": 1.2,
+     "unit": "",
+     "label": "максимальный C_L",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "малые числа Рейнольдса пропеллеров дронов"
+    },
+    {
+     "field": "rotor.airfoil.cd0",
+     "value": 0.015,
+     "unit": "",
+     "label": "профильное сопротивление",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "малые числа Рейнольдса, Re~10⁵"
+    },
+    {
+     "field": "rotor.airfoil.thickness",
+     "value": 0.1,
+     "unit": "",
+     "label": "относительная толщина профиля",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "типично для пропеллеров мультикоптеров"
+    }
+   ]
+  },
+  "ms": 22707,
+  "costUsd": 0.0791164,
+  "steps": [
+   {
+    "name": "разбор",
+    "ms": 6436,
+    "output": 605
+   },
+   {
+    "name": "проект",
+    "ms": 16267,
+    "output": 2101
+   }
+  ],
+  "fixes": []
+ },
+ {
+  "id": "octo-top",
+  "score": {
+   "id": "octo-top",
+   "identified": true,
+   "problems": [],
+   "ratios": [
+    {
+     "name": "arm/radius",
+     "expected": 2.6315789473684212,
+     "got": 2.6315789473684212,
+     "dev": 0,
+     "ok": true
+    }
+   ],
+   "sizes": [
+    {
+     "field": "rotor.armLength",
+     "expected": 1,
+     "got": 1,
+     "dev": 0,
+     "ok": true
+    }
+   ]
+  },
+  "image": {
+   "showsAircraft": true,
+   "kind": "drawing",
+   "view": "top",
+   "scaleReference": {
+    "kind": "grid",
+    "what": "сетка чертежа, подпись «клетка 0,5 м» (клетка ≈138 px)",
+    "sizeM": 0.5
+   },
+   "counts": {
+    "wings": null,
+    "rotors": 8,
+    "bladesPerRotor": 2,
+    "propellers": null
+   },
+   "measured": [
+    {
+     "what": "ширина корпуса",
+     "field": "fuselage.width",
+     "valueM": 0.6,
+     "how": "квадрат ≈165 px при клетке 138 px = 0,5 м"
+    },
+    {
+     "what": "длина корпуса",
+     "field": "fuselage.length",
+     "valueM": 0.6,
+     "how": "квадрат ≈165 px, корпус квадратный"
+    },
+    {
+     "what": "радиус несущего винта",
+     "field": "rotor.radius",
+     "valueM": 0.38,
+     "how": "пунктирный круг ометания радиусом ≈105 px при клетке 138 px = 0,5 м"
+    },
+    {
+     "what": "длина луча от центра до оси винта",
+     "field": "rotor.armLength",
+     "valueM": 1,
+     "how": "расстояние от центра (700,450) до втулки (≈955,345 / 805,195) ≈275 px ≈ 2 клетки"
+    }
+   ],
+   "notVisible": [
+    "высота корпуса",
+    "масса аппарата и полезной нагрузки",
+    "мощность моторов и обороты винтов",
+    "материал рамы",
+    "аккумуляторы и время полёта"
+   ]
+  },
+  "design": {
+   "name": "Октокоптер (схема)",
+   "vehicleClass": "rotor",
+   "summary": "Беспилотный октокоптер: квадратный центральный корпус, 8 лучей с двухлопастными винтами на концах. Размеры сняты с чертежа по сетке «клетка 0,5 м», массы и мощность оценены по аналогичным тяжёлым мультикоптерам.",
+   "environment": {
+    "name": "Земля",
+    "g": 9.81,
+    "rho": 1.225,
+    "soundSpeed": 340.3
+   },
+   "fuselage": {
+    "length": 0.6,
+    "width": 0.6,
+    "height": 0.3,
+    "mass": 25,
+    "dragArea": 0.15
+   },
+   "material": "cfrp",
+   "sparWall": 0.0015,
+   "powerplant": {
+    "power": 12000,
+    "lapse": "none",
+    "losses": 0.15
+   },
+   "crewSeats": 0,
+   "fixedWing": null,
+   "rotor": {
+    "rotorCount": 8,
+    "radius": 0.38,
+    "bladeCount": 2,
+    "chord": 0.06,
+    "rpm": 3500,
+    "twistDeg": -12,
+    "bladeMass": 0.08,
+    "armLength": 1,
+    "airfoil": {
+     "cl0": 0.25,
+     "clMax": 1.2,
+     "cd0": 0.012,
+     "thickness": 0.1
+    }
+   },
+   "flapping": null,
+   "assumptions": [
+    {
+     "field": "fuselage.length",
+     "value": 0.6,
+     "unit": "м",
+     "label": "длина корпуса",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "Квадрат ≈165 px при клетке 138 px = 0,5 м."
+    },
+    {
+     "field": "fuselage.width",
+     "value": 0.6,
+     "unit": "м",
+     "label": "ширина корпуса",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "Квадрат ≈165 px при клетке 138 px = 0,5 м."
+    },
+    {
+     "field": "fuselage.height",
+     "value": 0.3,
+     "unit": "м",
+     "label": "высота корпуса",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "На виде сверху не видна; принята половина ширины, как у типичных рам тяжёлых коптеров."
+    },
+    {
+     "field": "fuselage.mass",
+     "value": 25,
+     "unit": "кг",
+     "label": "масса без лопастей (рама, моторы, аккумуляторы, нагрузка)",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Октокоптеры с винтами ~30 дюймов и размахом ~2,8 м имеют взлётную массу 20–30 кг."
+    },
+    {
+     "field": "fuselage.dragArea",
+     "value": 0.15,
+     "unit": "м²",
+     "label": "площадь вредного сопротивления",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Корпус 0,6×0,3 м плюс 8 лучей и моторов, C_D≈1."
+    },
+    {
+     "field": "sparWall",
+     "value": 0.0015,
+     "unit": "м",
+     "label": "толщина стенки лонжерона лопасти",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типично для углепластиковых пропеллеров такого размера."
+    },
+    {
+     "field": "powerplant.power",
+     "value": 12000,
+     "unit": "Вт",
+     "label": "суммарная мощность моторов",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "8 моторов по ~1,5 кВт, типично для винтов 30 дюймов на тяжёлых коптерах."
+    },
+    {
+     "field": "powerplant.losses",
+     "value": 0.15,
+     "unit": "доля",
+     "label": "потери (КПД моторов и регуляторов)",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "КПД бесколлекторных электромоторов с регуляторами ~85%."
+    },
+    {
+     "field": "rotor.rotorCount",
+     "value": 8,
+     "unit": "шт",
+     "label": "число несущих винтов",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "На чертеже 8 винтов на концах лучей."
+    },
+    {
+     "field": "rotor.radius",
+     "value": 0.38,
+     "unit": "м",
+     "label": "радиус винта",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "Пунктирный круг ометания радиусом ≈105 px при клетке 138 px = 0,5 м."
+    },
+    {
+     "field": "rotor.bladeCount",
+     "value": 2,
+     "unit": "шт",
+     "label": "лопастей на винт",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "На каждом винте изображены две лопасти."
+    },
+    {
+     "field": "rotor.chord",
+     "value": 0.06,
+     "unit": "м",
+     "label": "хорда лопасти",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Пропеллеры ~30 дюймов имеют среднюю хорду 5–7 см."
+    },
+    {
+     "field": "rotor.rpm",
+     "value": 3500,
+     "unit": "об/мин",
+     "label": "обороты винта",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типичные обороты висения винтов диаметром 0,76 м."
+    },
+    {
+     "field": "rotor.twistDeg",
+     "value": -12,
+     "unit": "°",
+     "label": "крутка лопасти",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типично для пропеллеров мультикоптеров."
+    },
+    {
+     "field": "rotor.bladeMass",
+     "value": 0.08,
+     "unit": "кг",
+     "label": "масса лопасти",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Углепластиковый пропеллер 30 дюймов весит ~150–170 г на пару."
+    },
+    {
+     "field": "rotor.armLength",
+     "value": 1,
+     "unit": "м",
+     "label": "длина луча до оси винта",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "≈275 px от центра до втулки ≈ 2 клетки по 0,5 м."
+    },
+    {
+     "field": "rotor.airfoil.cl0",
+     "value": 0.25,
+     "unit": "",
+     "label": "C_L при нулевом угле",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типичный выпуклый профиль пропеллера."
+    },
+    {
+     "field": "rotor.airfoil.clMax",
+     "value": 1.2,
+     "unit": "",
+     "label": "максимальный C_L",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Низкие числа Рейнольдса у пропеллеров коптеров."
+    },
+    {
+     "field": "rotor.airfoil.cd0",
+     "value": 0.012,
+     "unit": "",
+     "label": "профильное сопротивление",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типично для профилей пропеллеров при Re~10⁵."
+    },
+    {
+     "field": "rotor.airfoil.thickness",
+     "value": 0.1,
+     "unit": "",
+     "label": "относительная толщина",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типично для углепластиковых пропеллеров."
+    }
+   ]
+  },
+  "ms": 25233,
+  "costUsd": 0.08101240000000001,
+  "steps": [
+   {
+    "name": "разбор",
+    "ms": 7477,
+    "output": 636
+   },
+   {
+    "name": "проект",
+    "ms": 17754,
+    "output": 2159
+   }
+  ],
+  "fixes": []
+ },
+ {
+  "id": "ornithopter-top",
+  "score": {
+   "id": "ornithopter-top",
+   "identified": true,
+   "problems": [],
+   "ratios": [
+    {
+     "name": "wing/length",
+     "expected": 0.625,
+     "got": 0.625,
+     "dev": 0,
+     "ok": true
+    },
+    {
+     "name": "chord/wing",
+     "expected": 0.12,
+     "got": 0.11000000000000001,
+     "dev": 0.08333333333333315,
+     "ok": true
+    }
+   ],
+   "sizes": [
+    {
+     "field": "flapping.span",
+     "expected": 10,
+     "got": 10,
+     "dev": 0,
+     "ok": true
+    }
+   ]
+  },
+  "image": {
+   "showsAircraft": true,
+   "kind": "drawing",
+   "view": "top",
+   "scaleReference": {
+    "kind": "dimension-line",
+    "what": "размерная линия «16 м» вдоль корпуса",
+    "sizeM": 16
+   },
+   "counts": {
+    "wings": 8,
+    "rotors": null,
+    "bladesPerRotor": null,
+    "propellers": null
+   },
+   "measured": [
+    {
+     "what": "длина корпуса",
+     "field": "fuselage.length",
+     "valueM": 16,
+     "how": "совпадает с размерной линией 16 м (≈720 пикс.)"
+    },
+    {
+     "what": "ширина корпуса",
+     "field": "fuselage.width",
+     "valueM": 3,
+     "how": "≈135 пикс. при 45 пикс./м"
+    },
+    {
+     "what": "размах одного крыла от корня до конца",
+     "field": "flapping.span",
+     "valueM": 10,
+     "how": "≈450 пикс. при 45 пикс./м; общий размах ≈22,7 м"
+    },
+    {
+     "what": "хорда крыла у корня",
+     "field": "flapping.chord",
+     "valueM": 1.2,
+     "how": "≈54 пикс. у корня, ≈44 пикс. у конца (≈1,0 м)"
+    }
+   ],
+   "notVisible": [
+    "высота корпуса",
+    "масса аппарата и экипажа",
+    "материал конструкции",
+    "мощность привода и частота взмахов",
+    "амплитуда взмаха крыльев",
+    "оперение (на чертеже отсутствует)"
+   ]
+  },
+  "design": {
+   "name": "Стрекозоподобный махолёт с четырьмя парами крыльев",
+   "vehicleClass": "flapping",
+   "summary": "Махолёт с веретенообразным корпусом длиной 16 м и четырьмя парами узких крыльев (по 4 с каждой стороны). Длина корпуса, ширина, размах и хорда крыла сняты с чертежа по размерной линии 16 м; остальное оценено.",
+   "environment": {
+    "name": "Земля",
+    "g": 9.81,
+    "rho": 1.225,
+    "soundSpeed": 340.3
+   },
+   "fuselage": {
+    "length": 16,
+    "width": 3,
+    "height": 3,
+    "mass": 3000,
+    "dragArea": 1.5
+   },
+   "material": "cfrp",
+   "sparWall": 0.005,
+   "powerplant": {
+    "power": 400000,
+    "lapse": "turbine",
+    "losses": 0.15
+   },
+   "crewSeats": 2,
+   "fixedWing": null,
+   "rotor": null,
+   "flapping": {
+    "wingsPerSide": 4,
+    "span": 10,
+    "chord": 1.1,
+    "frequencyHz": 1.5,
+    "amplitudeDeg": 30,
+    "wingMass": null,
+    "airfoil": {
+     "cl0": 0.1,
+     "clMax": 1.2,
+     "cd0": 0.02,
+     "thickness": 0.1
+    }
+   },
+   "assumptions": [
+    {
+     "field": "fuselage.length",
+     "value": 16,
+     "unit": "м",
+     "label": "длина корпуса",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "Совпадает с размерной линией «16 м» на чертеже."
+    },
+    {
+     "field": "fuselage.width",
+     "value": 3,
+     "unit": "м",
+     "label": "ширина корпуса",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "≈135 пикс. при масштабе 45 пикс./м по размерной линии 16 м."
+    },
+    {
+     "field": "fuselage.height",
+     "value": 3,
+     "unit": "м",
+     "label": "высота корпуса",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Вид сверху; принято равной ширине для веретенообразного корпуса."
+    },
+    {
+     "field": "fuselage.mass",
+     "value": 3000,
+     "unit": "кг",
+     "label": "масса корпуса с приводом, топливом и экипажем",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Корпус 16×3 м из композита, турбинный привод и экипаж, по аналогии с лёгкими вертолётами схожих размеров."
+    },
+    {
+     "field": "fuselage.dragArea",
+     "value": 1.5,
+     "unit": "м²",
+     "label": "площадь вредного сопротивления",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Обтекаемое тело миделем ~7 м² с C_D около 0,2."
+    },
+    {
+     "field": "sparWall",
+     "value": 0.005,
+     "unit": "м",
+     "label": "толщина стенки лонжерона",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типично для композитных лонжеронов крыльев такого размера."
+    },
+    {
+     "field": "powerplant.power",
+     "value": 400000,
+     "unit": "Вт",
+     "label": "мощность привода",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "На чертеже не указана; уровень лёгкого вертолёта схожей массы."
+    },
+    {
+     "field": "powerplant.losses",
+     "value": 0.15,
+     "unit": "",
+     "label": "потери в механизме привода крыльев",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Кривошипно-шатунный механизм взмаха и редуктор."
+    },
+    {
+     "field": "crewSeats",
+     "value": 2,
+     "unit": "",
+     "label": "число мест",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Пилотируемый аппарат такого размера; на чертеже экипаж не показан."
+    },
+    {
+     "field": "flapping.wingsPerSide",
+     "value": 4,
+     "unit": "",
+     "label": "крыльев с каждой стороны",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "На чертеже видно по 4 крыла с каждой стороны."
+    },
+    {
+     "field": "flapping.span",
+     "value": 10,
+     "unit": "м",
+     "label": "длина одного крыла",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "≈450 пикс. при 45 пикс./м по размерной линии 16 м."
+    },
+    {
+     "field": "flapping.chord",
+     "value": 1.1,
+     "unit": "м",
+     "label": "средняя хорда крыла",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "≈1,2 м у корня и ≈1,0 м у конца по размерной линии 16 м."
+    },
+    {
+     "field": "flapping.frequencyHz",
+     "value": 1.5,
+     "unit": "Гц",
+     "label": "частота взмахов",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Для крыла длиной 10 м с ограничением по скорости конца; не видно на чертеже."
+    },
+    {
+     "field": "flapping.amplitudeDeg",
+     "value": 30,
+     "unit": "°",
+     "label": "амплитуда взмаха",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типичная амплитуда для крупных орнитоптеров; не видно на чертеже."
+    },
+    {
+     "field": "flapping.airfoil.cl0",
+     "value": 0.1,
+     "unit": "",
+     "label": "C_L при нулевом угле",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Тонкий слабоизогнутый профиль махового крыла."
+    },
+    {
+     "field": "flapping.airfoil.clMax",
+     "value": 1.2,
+     "unit": "",
+     "label": "максимальный C_L",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Типичное значение для тонкого профиля."
+    },
+    {
+     "field": "flapping.airfoil.cd0",
+     "value": 0.02,
+     "unit": "",
+     "label": "профильное сопротивление",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Тонкий профиль при нестационарном обтекании."
+    },
+    {
+     "field": "flapping.airfoil.thickness",
+     "value": 0.1,
+     "unit": "",
+     "label": "относительная толщина профиля",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "Узкое тонкое крыло на чертеже."
+    }
+   ]
+  },
+  "ms": 23336,
+  "costUsd": 0.0780804,
+  "steps": [
+   {
+    "name": "разбор",
+    "ms": 7538,
+    "output": 690
+   },
+   {
+    "name": "проект",
+    "ms": 15797,
+    "output": 1945
+   }
+  ],
+  "fixes": []
+ },
+ {
+  "id": "musclebird-front",
+  "score": {
+   "id": "musclebird-front",
+   "identified": false,
+   "problems": [
+    "класс fixed-wing, ожидался flapping",
+    "flapping.wingsPerSide = undefined, ожидалось 1"
+   ],
+   "ratios": [],
+   "sizes": [
+    {
+     "field": "flapping.span",
+     "expected": 15.6,
+     "got": null,
+     "dev": null,
+     "ok": false
+    }
+   ]
+  },
+  "image": {
+   "showsAircraft": true,
+   "kind": "drawing",
+   "view": "front",
+   "scaleReference": {
+    "kind": "person",
+    "what": "фигура человека справа от аппарата",
+    "sizeM": 1.8
+   },
+   "counts": {
+    "wings": 1,
+    "rotors": null,
+    "bladesPerRotor": null,
+    "propellers": null
+   },
+   "measured": [
+    {
+     "what": "размах крыла",
+     "field": "fixedWing.span",
+     "valueM": 32.5,
+     "how": "размах ~1170 px при росте человека ~65 px (≈18 px/0,5 м): в ~18 раз больше роста человека"
+    },
+    {
+     "what": "ширина гондолы",
+     "field": "fuselage.width",
+     "valueM": 0.85,
+     "how": "~30 px, ≈0,47 роста человека"
+    },
+    {
+     "what": "высота гондолы",
+     "field": "fuselage.height",
+     "valueM": 1.25,
+     "how": "~45 px, ≈0,7 роста человека"
+    }
+   ],
+   "notVisible": [
+    "длина фюзеляжа",
+    "хорда крыла",
+    "воздушный винт и его диаметр",
+    "оперение",
+    "масса аппарата и пилота",
+    "материал силового набора",
+    "мощность пилота"
+   ]
+  },
+  "design": {
+   "name": "Мускулолёт",
+   "vehicleClass": "fixed-wing",
+   "summary": "Мускулолёт с педальным приводом: высокое крыло большого удлинения с поперечным V, узкая гондола пилота, одно колесо, толкающий или тянущий винт. Размах и сечение гондолы сняты с чертежа по фигуре человека 1,8 м, остальное оценено по аналогам (Daedalus, Gossamer Albatross).",
+   "environment": {
+    "name": "Земля",
+    "g": 9.81,
+    "rho": 1.225,
+    "soundSpeed": 340.3
+   },
+   "fuselage": {
+    "length": 4.5,
+    "width": 0.85,
+    "height": 1.25,
+    "mass": 90,
+    "dragArea": 0.12
+   },
+   "material": "cfrp",
+   "sparWall": 0.0008,
+   "powerplant": {
+    "power": 300,
+    "lapse": "none",
+    "losses": 0.1
+   },
+   "crewSeats": 1,
+   "fixedWing": {
+    "span": 32.5,
+    "rootChord": 1,
+    "tipChord": 0.5,
+    "highWing": true,
+    "airfoil": {
+     "cl0": 0.6,
+     "clMax": 1.5,
+     "cd0": 0.01,
+     "thickness": 0.14
+    },
+    "tailArea": 3,
+    "tailArm": 4.5,
+    "propellerDiameter": 3.4,
+    "propellerCount": 1,
+    "limitLoadFactor": 2
+   },
+   "rotor": null,
+   "flapping": null,
+   "assumptions": [
+    {
+     "field": "fixedWing.span",
+     "value": 32.5,
+     "unit": "м",
+     "label": "размах крыла",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "≈18 ростов фигуры человека 1,8 м на чертеже"
+    },
+    {
+     "field": "fuselage.width",
+     "value": 0.85,
+     "unit": "м",
+     "label": "ширина гондолы",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "≈0,47 роста человека на чертеже"
+    },
+    {
+     "field": "fuselage.height",
+     "value": 1.25,
+     "unit": "м",
+     "label": "высота гондолы",
+     "confidence": "medium",
+     "origin": "image",
+     "reason": "≈0,7 роста человека на чертеже"
+    },
+    {
+     "field": "fuselage.length",
+     "value": 4.5,
+     "unit": "м",
+     "label": "длина гондолы с хвостовой балкой",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "по аналогам Daedalus/Gossamer Albatross"
+    },
+    {
+     "field": "fuselage.mass",
+     "value": 90,
+     "unit": "кг",
+     "label": "масса пилота, гондолы, привода и винта",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "пилот ~70 кг плюс конструкция гондолы и трансмиссии ~20 кг"
+    },
+    {
+     "field": "fuselage.dragArea",
+     "value": 0.12,
+     "unit": "м²",
+     "label": "площадь вредного сопротивления",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "обтекаемая гондола пилота с колесом"
+    },
+    {
+     "field": "sparWall",
+     "value": 0.0008,
+     "unit": "м",
+     "label": "толщина стенки лонжерона",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "тонкостенные углепластиковые трубы мускулолётов"
+    },
+    {
+     "field": "powerplant.power",
+     "value": 300,
+     "unit": "Вт",
+     "label": "мощность пилота",
+     "confidence": "medium",
+     "origin": "estimated",
+     "reason": "длительная мощность тренированного велосипедиста"
+    },
+    {
+     "field": "powerplant.losses",
+     "value": 0.1,
+     "unit": "",
+     "label": "потери трансмиссии",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "цепная/валовая передача к винту"
+    },
+    {
+     "field": "crewSeats",
+     "value": 1,
+     "unit": "",
+     "label": "число мест",
+     "confidence": "high",
+     "origin": "image",
+     "reason": "одноместная гондола пилота"
+    },
+    {
+     "field": "fixedWing.rootChord",
+     "value": 1,
+     "unit": "м",
+     "label": "корневая хорда",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "удлинение ~40 как у Daedalus"
+    },
+    {
+     "field": "fixedWing.tipChord",
+     "value": 0.5,
+     "unit": "м",
+     "label": "концевая хорда",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "сужение ~0,5 у аналогов"
+    },
+    {
+     "field": "fixedWing.airfoil.cl0",
+     "value": 0.6,
+     "unit": "",
+     "label": "C_L при нулевом угле",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "сильно изогнутые низкорейнольдсовые профили (DAE)"
+    },
+    {
+     "field": "fixedWing.airfoil.clMax",
+     "value": 1.5,
+     "unit": "",
+     "label": "максимальный C_L",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "профили серии DAE"
+    },
+    {
+     "field": "fixedWing.airfoil.cd0",
+     "value": 0.01,
+     "unit": "",
+     "label": "профильное сопротивление",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "ламинарный профиль при Re ~5·10⁵"
+    },
+    {
+     "field": "fixedWing.airfoil.thickness",
+     "value": 0.14,
+     "unit": "",
+     "label": "относительная толщина",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "типично для мускулолётов"
+    },
+    {
+     "field": "fixedWing.tailArea",
+     "value": 3,
+     "unit": "м²",
+     "label": "площадь ГО",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "по аналогам, ~10% площади крыла"
+    },
+    {
+     "field": "fixedWing.tailArm",
+     "value": 4.5,
+     "unit": "м",
+     "label": "плечо ГО",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "хвостовая балка аналогов"
+    },
+    {
+     "field": "fixedWing.propellerDiameter",
+     "value": 3.4,
+     "unit": "м",
+     "label": "диаметр винта",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "винт Daedalus ~3,4 м; на виде спереди не виден"
+    },
+    {
+     "field": "fixedWing.propellerCount",
+     "value": 1,
+     "unit": "",
+     "label": "число винтов",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "на чертеже не виден, у мускулолётов обычно один"
+    },
+    {
+     "field": "fixedWing.limitLoadFactor",
+     "value": 2,
+     "unit": "",
+     "label": "эксплуатационная перегрузка",
+     "confidence": "low",
+     "origin": "estimated",
+     "reason": "сверхлёгкие мускулолёты рассчитываются на ~2g"
+    }
+   ]
+  },
+  "ms": 24485,
+  "costUsd": 0.0780084,
+  "steps": [
+   {
+    "name": "разбор",
+    "ms": 6081,
+    "output": 567
+   },
+   {
+    "name": "проект",
+    "ms": 18403,
+    "output": 2093
+   }
+  ],
+  "fixes": []
+ },
+ {
+  "id": "chair",
+  "score": {
+   "id": "chair",
+   "identified": true,
+   "problems": [],
+   "ratios": [],
+   "sizes": [],
+   "rejectedWithReason": true
+  },
+  "error": "На изображении нет летательного аппарата: На изображении не летательный аппарат, а схематичный рисунок стула в профиль: сиденье, две видимые ножки и спинка, стоящие на линии пола. Крыльев, несущих или воздушных винтов, корпуса летательного аппарата нет — это мебель, проверять на стенде нечего.",
+  "image": {
+   "showsAircraft": false,
+   "kind": "drawing",
+   "view": "side",
+   "scaleReference": {
+    "kind": "none",
+    "what": "эталона масштаба нет; по типу предмета высота сиденья стула обычно около 0,45 м",
+    "sizeM": null
+   },
+   "counts": {
+    "wings": null,
+    "rotors": null,
+    "bladesPerRotor": null,
+    "propellers": null
+   },
+   "measured": [],
+   "notVisible": [
+    "летательный аппарат на изображении отсутствует"
+   ]
+  },
+  "design": null,
+  "ms": 5224,
+  "costUsd": 0.017603599999999997,
+  "steps": [
+   {
+    "name": "разбор",
+    "ms": 5222,
+    "output": 375
+   }
+  ],
+  "fixes": []
+ },
+ {
+  "id": "house",
+  "score": {
+   "id": "house",
+   "identified": true,
+   "problems": [],
+   "ratios": [],
+   "sizes": [],
+   "rejectedWithReason": true
+  },
+  "error": "На изображении нет летательного аппарата: это схематичный рисунок дома с двускатной крышей, дверью и окном и дерева с круглой кроной на линии земли. Ни крыльев, ни винтов, ни корпуса летательного аппарата не видно, поэтому проверять на стенде нечего.",
+  "image": {
+   "showsAircraft": false,
+   "kind": "drawing",
+   "view": "side",
+   "scaleReference": {
+    "kind": "door",
+    "what": "дверь дома",
+    "sizeM": 2
+   },
+   "counts": {
+    "wings": null,
+    "rotors": null,
+    "bladesPerRotor": null,
+    "propellers": null
+   },
+   "measured": [],
+   "notVisible": [
+    "летательный аппарат на изображении отсутствует"
+   ]
+  },
+  "design": null,
+  "ms": 3861,
+  "costUsd": 0.0163836,
+  "steps": [
+   {
+    "name": "разбор",
+    "ms": 3860,
+    "output": 314
+   }
+  ],
+  "fixes": []
+ }
+]
