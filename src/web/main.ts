@@ -653,6 +653,9 @@ let replay = new Replay();
 let replaying: { t: number } | null = null;
 // После испытания с закреплённым корпусом последний цикл привода показывается по кругу.
 let looping: { t: number } | null = null;
+// Пока автопилот трубы подбирает режим (ускоренный расчёт), показывается последний целый цикл привода по кругу в выбранном
+// темпе: иначе на экране — ускоренные кадры, и крылья мелькают в десятки раз быстрее, чем потом в замедлении.
+let ffT = 0;
 let knownBreaks = 0;
 let lastEvents = -1;
 let sizeR = 10;
@@ -1587,6 +1590,10 @@ function frame(now: number) {
       looping.t += dtReal * speed;
       const f = replay.loopAt(looping.t);
       if (f) applyFrame(f.data);
+    } else if (run.fastForward && !run.done) {
+      ffT += dtReal * speed;
+      const f = replay.loopAt(ffT);
+      applyFrame(f ? f.data : snapshot());
     } else {
       applyFrame(snapshot());
       marker.visible = run.sim.t >= markerT;
