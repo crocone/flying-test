@@ -18,7 +18,7 @@ import { buildReport, partNames, resultDigest, type Report } from '../core/repor
 import { raz } from '../core/analyze.ts';
 import { parseShare, type Snapshot } from '../core/share.ts';
 import { chartData, type ChartData } from './snapshot.ts';
-import { add, fromArr, rotate, type V3 } from '../core/vec.ts';
+import { add, fromArr, rotate, type Q, type V3 } from '../core/vec.ts';
 import { Replay, Series } from './recorder.ts';
 import { Airflow } from './airflow.ts';
 import { reproRun } from '../core/repro.ts';
@@ -379,6 +379,9 @@ interface PartView {
 }
 let views: PartView[] = [];
 let frameSize = 0;
+// Последний показанный кадр. При ускоренном показе и в повторе картинка берётся из записи, а расчёт уходит вперёд —
+// камера (слежение, вид из кабины) ставится по тому, что на экране, а не по текущему расчёту.
+let shown: Float32Array | null = null;
 // Заливка элемента — по нагрузке: чёрный — запас велик, белый — предел. Сломанная деталь гаснет.
 const neutral = new THREE.Color(0x000000);
 const tmp = new THREE.Color();
@@ -425,6 +428,7 @@ function showRejected(errors: string[]) {
 function clearViews() {
   for (const v of views) {
     scene.remove(v.group);
+    shown = null;
     v.group.traverse((o) => {
       if (o instanceof THREE.Mesh || o instanceof THREE.LineSegments) {
         if (!o.userData.sharedGeo) o.geometry.dispose();
@@ -501,7 +505,15 @@ function snapshot(): Float32Array {
   return d;
 }
 
+function shownPose(p: PartModel): { t: V3; q: Q } {
+  const v = views.find((x) => x.part === p);
+  if (!v || !shown || shown.length !== frameSize) return run!.sim.pose(p);
+  const o = v.offset, d = shown;
+  return { t: { x: d[o], y: d[o + 1], z: d[o + 2] }, q: { x: d[o + 3], y: d[o + 4], z: d[o + 5], w: d[o + 6] } };
+}
+
 function applyFrame(d: Float32Array) {
+  shown = d;
   for (const v of views) {
     const o = v.offset;
     v.group.position.set(d[o], d[o + 1], d[o + 2]);
@@ -761,6 +773,7 @@ function rebuild() {
 function placeCamera() {
   if (!run) return;
   const rt = run.sim.root.b.rb.translation();
+  followPrev = null;
   controls.target.set(rt.x, rt.y, rt.z);
   camera.position.set(rt.x + sizeR * 1.6, rt.y + sizeR * 0.9, rt.z + sizeR * 2.2);
   camera.near = sizeR / 200;
@@ -841,7 +854,30 @@ function updatePanel() {
     const a = analyze(r, names);
     // До конца испытания вердикт выносится только по тому, что уже случилось: разрушение, перегрузка.
     // «Не взлетает» посреди разгона или поиска режима — преждевременно.
-    if (!run.done && a.kind !== 'breaks' && a.kind !== 'crew') {
+    const sn = run.stressNow;
+    if (!run.done && a.kind !== 'breaks' && a.kind !== 'crew' && run.id === 'stress') {
+      // Серия стресс-тестов: какое испытание идёт, его цель и этап, итог предыдущего.
+      v.className = 'badge';
+      if (!sn) {
+        v.append(el('b', tr('Взлёт', 'Take-off')), listOf([tr('Аппарат взлетает и переносится на высоту испытаний; потом — серия стресс-тестов по нормам лётной годности.',
+          'The vehicle takes off and is moved to the test altitude; then the series of airworthiness stress tests follows.')]));
+      } else {
+        const stage = sn.stage === 'trim'
+          ? tr('выход на режим испытания — ускоренно', 'setting up the test — fast-forward')
+          : sn.stage === 'step' ? tr('идёт испытание — без ускорения', 'test in progress — not fast-forwarded')
+          : run.fastForward ? tr('испытание закончено, возврат в горизонт — ускоренно', 'test done, recovering to level flight — fast-forward')
+          : tr('испытание закончено, вывод из манёвра', 'test done, recovering from the manoeuvre');
+        v.append(el('div', tr(`Испытание ${sn.n} из ${sn.of}`, `Test ${sn.n} of ${sn.of}`), 'stressNo'), el('b', sn.name));
+        const items = [stage, tr('Цель: ', 'Goal: ') + sn.target];
+        const prev = r.stress?.[r.stress.length - 1];
+        if (prev) {
+          const res = prev.pass === true ? tr('пройдено', 'passed') : prev.pass === false ? tr('не пройдено', 'failed') : tr('замер без критерия', 'measured, no criterion');
+          // На выводе последний записанный итог — этого же испытания.
+          items.push(sn.stage === 'recover' && prev.name === sn.name ? tr('Итог: ', 'Result: ') + res : tr('Предыдущее — ', 'Previous — ') + `${prev.name}: ${res}`);
+        }
+        v.append(listOf(items));
+      }
+    } else if (!run.done && a.kind !== 'breaks' && a.kind !== 'crew') {
       v.className = 'badge';
       v.append(el('b', tr('Идёт испытание', 'Test in progress')), listOf([run.fastForward
         ? (run.id === 'stress'
@@ -1495,6 +1531,8 @@ const stats = { fps: 0, physMs: 0, stepsPerFrame: 0, slow: 0 };
 let frames = 0, fpsT0 = performance.now(), last = performance.now(), panelT = 0, physAcc = 0, stepAcc = 0;
 let wantAcc = 0, didAcc = 0; // сколько модельного времени просили и сколько успели посчитать за секунду
 const camOffset = new THREE.Vector3();
+let followPrev: THREE.Vector3 | null = null; // где был аппарат на прошлом кадре
+const eye = new THREE.Vector3();
 const yaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.PI / 2);
 let camMode = 'follow';
 
@@ -1609,24 +1647,46 @@ function frame(now: number) {
       marker.lookAt(camera.position);
     }
     showForces($<HTMLInputElement>('forces').checked && !replaying);
-    const rt = run.sim.root.b.rb.translation();
+    const rt = shownPose(run.sim.root).t;
+    const rp = new THREE.Vector3(rt.x, rt.y, rt.z);
+    const crew = run.sim.partById.get(run.spec.crew.part) ?? run.sim.root;
     if (camMode === 'cockpit') {
-      const sim = run.sim;
-      const p = sim.partById.get(run.spec.crew.part) ?? sim.root;
-      const { t, q } = sim.pose(p);
+      const { t, q } = shownPose(crew);
       const seat = run.spec.crew.seats[0] ? fromArr(run.spec.crew.seats[0]) : { x: 0, y: 0, z: 0 };
-      const w = add(t, rotate(q, seat));
-      camera.position.set(w.x, w.y + 0.4, w.z);
+      // Глаза — на 0,4 м выше кресла по оси корпуса (в крене и на петле — вместе с кабиной).
+      const w = add(t, rotate(q, add(seat, { x: 0, y: 0.4, z: 0 })));
+      camera.position.set(w.x, w.y, w.z);
       camera.quaternion.set(q.x, q.y, q.z, q.w).multiply(yaw);
       camera.near = 0.05;
       camera.updateProjectionMatrix();
     } else {
       if (camMode === 'follow') {
+        // Плавное догоняние (0,2 за кадр) отстаёт на несколько кадров движения. При ускоренном показе, переносе на высоту
+        // манёвров или быстром темпе аппарат за кадр уходит на сотни метров — тогда камера переносится вместе с ним.
+        if (followPrev && ((run.fastForward && !run.done) || rp.distanceTo(followPrev) > 0.5 * sizeR)) {
+          const d = rp.clone().sub(followPrev);
+          controls.target.add(d);
+          camera.position.add(d);
+        }
         camOffset.copy(camera.position).sub(controls.target);
-        controls.target.lerp(new THREE.Vector3(rt.x, rt.y, rt.z), 0.2);
+        controls.target.lerp(rp, 0.2);
         camera.position.copy(controls.target).add(camOffset);
       }
       controls.update();
+    }
+    followPrev = rp;
+    // Глаза лётчика — внутри корпуса и деталей кабины: изнутри их заливка не видна, а вывернутая оболочка-контур закрыла бы
+    // весь экран. В виде из кабины оболочки форм, внутри которых глаза, прячутся; рёбра остаются — видна рамка кабины.
+    for (const v of views) {
+      const m = v.group.children[0];
+      if (v.elems.length || !(m instanceof THREE.Mesh)) continue;
+      let inside = false;
+      if (camMode === 'cockpit') {
+        if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+        m.updateWorldMatrix(true, false);
+        inside = m.geometry.boundingBox!.clone().expandByScalar(0.1).containsPoint(m.worldToLocal(eye.copy(camera.position)));
+      }
+      for (const c of m.children) if (c instanceof THREE.Mesh) c.visible = !inside;
     }
     drawPlumb();
     placeGround();

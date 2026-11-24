@@ -205,6 +205,9 @@ export interface StressStep {
   note?: string;
 }
 
+/** Стресс-тесты в браузере: сколько секунд вывода после манёвра показывать в реальном времени, прежде чем ускорить. */
+const STRESS_SHOW_RECOVERY = 4;
+
 export class ProgramRun {
   readonly sim: Sim;
   readonly id: ProgramId;
@@ -213,8 +216,10 @@ export class ProgramRun {
   phase = 'старт';
   done = false;
   // Идёт часть испытания, на которую незачем смотреть в замедлении (автопилот трубы перебирает
-  // десятки циклов взмаха): стенд считает её ускоренно.
+  // десятки циклов взмаха): стенд считает её ускоренно. На расчёт не влияет — только на показ.
   fastForward = false;
+  /** Стресс-тесты: какое испытание серии идёт сейчас и на каком этапе (для показа на стенде). */
+  stressNow: { n: number; of: number; name: string; target: string; stage: 'trim' | 'step' | 'recover' } | null = null;
   // Вибрация (ISO 2631, с.к.з. за 2 с) — мера длительной тряски. В стресс-тестах порывы и резкие рули — разовые толчки:
   // их оценивают перегрузка по осям и модель удара, а вибрация на время манёвров и выводов из них не меряется.
   private vibPaused = false;
@@ -1531,9 +1536,9 @@ export class ProgramRun {
       const s = sim.sample;
       const t = sim.t - t0;
       const h = rb.translation().y;
-      // В браузере выход на режим и возврат в горизонт между манёврами досчитываются ускоренно; взлёт и сами манёвры —
-      // в реальном времени.
-      this.fastForward = sub === 'trim' || sub === 'recover';
+      // В браузере выход на режим и возврат в горизонт между манёврами досчитываются ускоренно; взлёт, сами манёвры и
+      // первые секунды вывода (замер кончается на пике, а самолёт ещё в манёвре) — в реальном времени.
+      this.fastForward = sub === 'trim' || (sub === 'recover' && t > STRESS_SHOW_RECOVERY);
       this.vibPaused = sub === 'step' || sub === 'recover';
       if (sub !== 'takeoff') {
         // Запись по шагу.
@@ -1565,6 +1570,7 @@ export class ProgramRun {
         return;
       }
       const cur = seq[i];
+      this.stressNow = { n: i + 1, of: seq.length, name: cur.step.name, target: cur.step.target, stage: sub as 'trim' | 'step' | 'recover' };
       if (sub === 'trim') {
         this.phase = tr(`подготовка: ${cur.step.name}`, `setting up: ${cur.step.name}`);
         if (trimAt(cur.trim ?? VA)(t)) {
@@ -1876,7 +1882,7 @@ export class ProgramRun {
       const s = sim.sample;
       const t = sim.t - t0;
       const h = rb.translation().y;
-      this.fastForward = sub === 'trim' || sub === 'recover';
+      this.fastForward = sub === 'trim' || (sub === 'recover' && t > STRESS_SHOW_RECOVERY);
       this.vibPaused = sub === 'step' || sub === 'recover';
       if (sub === 'step' || sub === 'recover') {
         rec.nMax = Math.max(rec.nMax, s.loadFactor);
@@ -1909,6 +1915,7 @@ export class ProgramRun {
         return;
       }
       const cur = seq[i];
+      this.stressNow = { n: i + 1, of: seq.length, name: cur.step.name, target: cur.step.target, stage: sub as 'trim' | 'step' | 'recover' };
       if (sub === 'trim') {
         this.phase = tr(`подготовка: ${cur.step.name}`, `setting up: ${cur.step.name}`);
         if (trimAt(cur.trim)(t)) { ensureAltitude(); stepH = rb.translation().y; sub = 'step'; t0 = sim.t; rec = newRec(); nLp = s.loadFactor; }
