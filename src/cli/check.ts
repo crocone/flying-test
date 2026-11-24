@@ -87,26 +87,68 @@ const base = (parts: Spec['parts'], joints: Spec['joints'], actuators: Spec['act
   assumptions: [],
 });
 
+/**
+ * Несущая линия для прямоугольного крыла (Глауэрт): Γ(θ) = 2bV·Σ A_n·sin nθ по нечётным n; в точках θ_i уравнение
+ * Σ A_n·sin nθ·(μ·n + sin θ) = μ·α·sin θ, μ = a0·c/(4b). C_L = π·λ·A_1, C_Di = π·λ·Σ n·A_n².
+ */
+function glauertRect(a0: number, AR: number, alpha: number) {
+  const N = 20;
+  const mu = a0 / (4 * AR); // c/b = 1/λ
+  const M: number[][] = [];
+  for (let i = 1; i <= N; i++) {
+    const th = (i * Math.PI) / (2 * N + 1); // половина размаха (симметрия), без концов
+    const row: number[] = [];
+    for (let k = 0; k < N; k++) {
+      const n = 2 * k + 1;
+      row.push(Math.sin(n * th) * (mu * n + Math.sin(th)));
+    }
+    row.push(mu * alpha * Math.sin(th));
+    M.push(row);
+  }
+  for (let c = 0; c < N; c++) {
+    let p = c;
+    for (let r = c + 1; r < N; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+    [M[c], M[p]] = [M[p], M[c]];
+    for (let r = c + 1; r < N; r++) {
+      const f = M[r][c] / M[c][c];
+      for (let k = c; k <= N; k++) M[r][k] -= f * M[c][k];
+    }
+  }
+  const A = new Array<number>(N).fill(0);
+  for (let r = N - 1; r >= 0; r--) {
+    let s = M[r][N];
+    for (let k = r + 1; k < N; k++) s -= M[r][k] * A[k];
+    A[r] = s / M[r][r];
+  }
+  const CL = Math.PI * AR * A[0];
+  const CDi = Math.PI * AR * A.reduce((s, a, k) => s + (2 * k + 1) * a * a, 0);
+  return { CL, CDi };
+}
+
 section('Прямое крыло в трубе: теория несущей линии');
 for (const aDeg of [2, 6]) {
-  const spec = base(
-    [{ id: 'w', kind: 'wing', position: [0, 2, 0.5], mass: 10,
-       aero: { side: 1, span: 5, rootChord: 1, tipChord: 1, incidenceDeg: aDeg, airfoil: airfoil0, induced: 'wing', sections: 12 } }],
-    [{ id: 'j', type: 'fixed', parent: 'body', child: 'w' }],
-  );
+  // Прямоугольное крыло удлинением 10: две консоли по 5 м от оси. (Раньше здесь была одна консоль: прежняя модель
+  // скоса с одним углом на консоль молча считала, что вторая половина есть. Несущая линия считает то, что построено:
+  // одна консоль — это крыло удлинением 5 с вихрем у корня.)
+  const half = (side: 1 | -1) => ({ id: side > 0 ? 'wR' : 'wL', kind: 'wing' as const, position: [0, 2, 0] as [number, number, number], mass: 10,
+    aero: { side, span: 5, rootChord: 1, tipChord: 1, incidenceDeg: aDeg, airfoil: airfoil0, induced: 'wing' as const, sections: 12 } });
+  const spec = base([half(1), half(-1)],
+    [{ id: 'jR', type: 'fixed', parent: 'body', child: 'wR' }, { id: 'jL', type: 'fixed', parent: 'body', child: 'wL' }]);
   const V = 30;
   // Теория несущей линии — для крыла вдали от земли (крыло здесь на 2 м при размахе 10 м — у земли).
   const sim = new Sim(RAPIER, spec, { wind: v3(-V, 0, 0), gravity: false, groundEffect: false });
   sim.lockRoot('fixed');
   sim.advance(0.5);
-  const w = sim.partById.get('w')!;
+  const F = ['wR', 'wL'].map((id) => sim.partById.get(id)!.aeroForce).reduce((s, f) => ({ x: s.x + f.x, y: s.y + f.y }), { x: 0, y: 0 });
   const a0 = airfoil0.clAlpha;
   const AR = 10;
-  const CL = (a0 * aDeg * deg) / (1 + a0 / (Math.PI * 0.9 * AR));
+  // Эталон — другой метод: несущая линия Прандтля в решении Глауэрта (ряд Фурье по нечётным гармоникам, уравнение
+  // монопланного крыла в точках коллокации). В модели — дискретные подковы и Био — Савар.
+  const { CL, CDi } = glauertRect(a0, AR, aDeg * deg);
   const q = 0.5 * 1.225 * V * V;
-  const S = 5;
-  report(`α = ${aDeg}°: подъёмная сила`, w.aeroForce.y, q * S * CL, 0.02, ' Н');
-  report(`α = ${aDeg}°: сопротивление`, -w.aeroForce.x, q * S * (airfoil0.cd0 + (CL * CL) / (Math.PI * 0.9 * AR)), 0.02, ' Н');
+  const S = 10;
+  report(`α = ${aDeg}°: подъёмная сила`, F.y, q * S * CL, 0.03, ' Н');
+  report(`α = ${aDeg}°: сопротивление`, -F.x, q * S * (airfoil0.cd0 + CDi), 0.03, ' Н');
   sim.free();
 }
 

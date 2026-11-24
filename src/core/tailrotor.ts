@@ -18,6 +18,50 @@ export interface TailRotorSpec {
   rootFrac?: number; // вырез у втулки, доля радиуса (по умолчанию 0,2)
   twistDeg?: number; // крутка на радиус (по умолчанию 0)
   airfoil: Airfoil;
+  // Свободный полёт (Sim.tailRotorFree): хвостовой винт — сила на балке, шаг — от педалей.
+  at?: [number, number, number]; // центр хвостового винта в тех же координатах, что положения деталей, м
+  channel?: string; // канал педалей: шаг лопастей хвостового винта, °
+}
+
+/**
+ * Один шаг BEMT хвостового винта при шаге θ и осевой скорости Vc (поток через диск навстречу тяге; Vc > 0 — винт
+ * «набирает высоту» вдоль своей тяги). Индуктивные скорости по кольцам vi — состояние между шагами расчёта: за шаг
+ * делается одно уточнение (тёплый старт), поэтому индуктивный поток устанавливается за несколько шагов — как и в
+ * настоящем винте, за доли оборота. Импульс в осевом потоке: dT = 4πρ·r·dr·F·vi·(vi + Vc).
+ * Полёт вперёд (поток вдоль диска) не учтён — как и в tailRotorPower.
+ */
+export function bemtStep(tr: TailRotorSpec, thetaDeg: number, Vc: number, rho: number, soundSpeed: number, rpmScale: number, mu: number, vi: number[]) {
+  const R = tr.radius;
+  const om = ((tr.rpm * rpmScale) * 2 * Math.PI) / 60;
+  const N = 12;
+  const r0 = (tr.rootFrac ?? 0.2) * R;
+  const dr = (R - r0) / N;
+  let T = 0, P = 0;
+  for (let i = 0; i < N; i++) {
+    const r = r0 + (i + 0.5) * dr;
+    const theta = ((thetaDeg + (tr.twistDeg ?? 0) * (r / R)) * Math.PI) / 180;
+    const ut = Math.max(1, om * r);
+    const v = vi[i] ?? 0.05 * om * R * Math.sign(thetaDeg || 1);
+    const un = v + Vc; // поток через диск, против тяги
+    const phi = Math.atan2(un, ut);
+    const f = ((tr.blades / 2) * (R - r)) / (r * Math.max(Math.abs(Math.sin(phi)), 1e-3));
+    const F = Math.max(0.05, (2 / Math.PI) * Math.acos(Math.min(1, Math.exp(-f))));
+    const W = Math.hypot(ut, un);
+    const c = airfoilCoeffs(tr.airfoil, theta - phi, W / soundSpeed, (rho * W * tr.chord) / mu);
+    const q = 0.5 * rho * W * W * tr.chord * tr.blades * dr;
+    const dT = q * (c.cl * Math.cos(phi) - c.cd * Math.sin(phi));
+    const dQ = q * (c.cl * Math.sin(phi) + c.cd * Math.cos(phi)) * r;
+    // Импульс: dT = 4πρ·r·dr·F·vi·|vi + Vc| (со знаком — обратная тяга даёт обратный поток).
+    const A = 4 * Math.PI * rho * r * dr * F;
+    const s = dT / A; // = vi·|vi + Vc|
+    let vNew: number;
+    if (s >= 0) vNew = -Vc / 2 + Math.sqrt(Math.max(0, (Vc * Vc) / 4 + s));
+    else vNew = -Vc / 2 - Math.sqrt(Math.max(0, (Vc * Vc) / 4 - s));
+    vi[i] = v + 0.5 * (vNew - v);
+    T += dT;
+    P += dQ * om;
+  }
+  return { T, P };
 }
 
 /** Тяга и мощность винта на висении при общем шаге θ (у корня; крутка линейная), BEMT с концевыми потерями. */

@@ -92,7 +92,7 @@ function tubeCritical(sec: SectionProps, m: Material): number {
 export function stationStress(sec: SectionProps, m: Material, L: StationLoads): StationStress {
   const sN = L.tension / sec.area;
   const f = (L.mFlap * (sec.h / 2)) / sec.iFlap; // со знаком: + растяжение сверху
-  const l = (L.mLag * (sec.b / 2)) / sec.iLag; // + растяжение спереди
+  const l = (L.mLag * (sec.lagArm ?? sec.b / 2)) / sec.iLag; // + растяжение спереди (с кессоном — изгиб несёт весь кессон)
   // Нормальные напряжения в углах коробки: верх-перёд, верх-зад, низ-перёд, низ-зад.
   // У трубы изгибы складываются как векторы: крайние волокна — на диаметре вдоль суммарного момента.
   const bend = Math.hypot(f, l);
@@ -107,7 +107,7 @@ export function stationStress(sec: SectionProps, m: Material, L: StationLoads): 
   const bi = sec.b - 2 * sec.t;
   const hi = sec.h - 2 * sec.t;
   const sFlap = (sec.b * sec.h * sec.h - bi * hi * hi) / 8;
-  const sLag = (sec.h * sec.b * sec.b - hi * bi * bi) / 8;
+  const sLag = sec.lagQ ?? (sec.h * sec.b * sec.b - hi * bi * bi) / 8;
   const tauV = sec.kind === 'tube'
     ? (2 * Math.hypot(L.vNormal, L.vChord)) / sec.area
     : (Math.abs(L.vNormal) * sFlap) / (sec.iFlap * 2 * sec.t) + (Math.abs(L.vChord) * sLag) / (sec.iLag * 2 * sec.t);

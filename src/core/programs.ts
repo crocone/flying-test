@@ -6,10 +6,11 @@ import { n } from './analyze.ts';
 import { Sim, type BreakEvent, type SimOptions } from './sim.ts';
 import { surfaceArea, type Spec, type Control } from './spec.ts';
 import type { FailureMode } from './strength.ts';
-import { v3, clamp, len, unrotate, copy } from './vec.ts';
+import { v3, clamp, len, unrotate, copy, add, sub as vsub, scale, dot, rotate } from './vec.ts';
 import { CrewLoad, VibrationMeter, type CrewLoadResult } from './crew.ts';
+import { HeliPilot } from './helipilot.ts';
 
-export type ProgramId = 'tethered' | 'hover' | 'flight' | 'tunnel' | 'free' | 'max';
+export type ProgramId = 'tethered' | 'hover' | 'flight' | 'tunnel' | 'free' | 'max' | 'stress';
 
 export const PROGRAMS: Record<ProgramId, { name: string; what: string }> = {
   // Названия — на языке интерфейса в момент обращения.
@@ -24,6 +25,13 @@ export const PROGRAMS: Record<ProgramId, { name: string; what: string }> = {
         'The autopilot finds the regime in a flow, then the body is released and the vehicle flies by itself: the autopilot holds height with wing incidence and speed with wing twist. Heading and body attitude are held');
     },
   },
+  stress: {
+    get name() { return tr('Стресс-тесты (нормы FAR 23 / 27)', 'Stress tests (FAR 23 / 27)'); },
+    get what() {
+      return tr('Взлёт и серия испытаний по нормам лётной годности. Самолёт: перегрузки по диаграмме V–n, порывы, резкие рули, пикирование до VD, сваливания, штопор. Вертолёт: перегрузки ручкой, малая перегрузка, порывы, полная педаль, отказ двигателя с авторотацией, 1,1·VNE. По каждому — цель, замер и вывод',
+        'Take-off and a series of airworthiness-standard tests. Aeroplane: V–n load factors, gusts, abrupt controls, dive to VD, stalls, spin. Helicopter: cyclic pull-ups, low G, gusts, full pedal, engine failure into autorotation, 1.1·VNE. Each with target, measurement and pass/fail');
+    },
+  },
   max: { get name() { return tr('Максимальный режим', 'Maximum mode'); }, get what() { return tr('Предельные обороты или манёвр с наибольшей перегрузкой: запас прочности и усталость', 'Maximum speed or the highest-load manoeuvre: safety margin and fatigue'); } },
 };
 
@@ -33,6 +41,7 @@ export interface ProgramOptions extends SimOptions {
   hoverHeight?: number;
   holdTime?: number;
   windSpeed?: number; // для привязного стенда самолёта
+  stressOnly?: string[]; // стресс-тесты: только эти шаги (по id) — для отладки и сверок
 }
 
 export interface ProgramResult {
@@ -133,6 +142,9 @@ export interface ProgramResult {
   // Крыло с наименьшей скоростью флаттера или дивергенции (если у крыльев задан кессон), м/с, Гц.
   flutter?: { part: string; vFlutter: number; fFlutter: number; vDivergence: number; fBending: number; fTorsion: number } | null;
   airspeedMax: number; // наибольшая скорость корпуса относительно воздуха за испытание, м/с
+  stress?: StressStep[];
+  // Прочность в этом испытании — только справочно (причина): у модели известное ограничение, вердикт по запасу не выносится.
+  strengthInfoOnly?: string; // стресс-тесты самолёта: по шагу — цель, замеры, вывод
 }
 
 /** Оценка скорости сваливания по основному крылу: V = √(2W / ρ S C_Lmax). */
@@ -183,6 +195,16 @@ class Window {
   }
 }
 
+/** Шаг стресс-теста: цель по нормам, замеры (подписи и значения), вывод (null — не применимо или не получилось). */
+export interface StressStep {
+  id: string;
+  name: string;
+  target: string;
+  pass: boolean | null;
+  values: [string, string][];
+  note?: string;
+}
+
 export class ProgramRun {
   readonly sim: Sim;
   readonly id: ProgramId;
@@ -193,6 +215,9 @@ export class ProgramRun {
   // Идёт часть испытания, на которую незачем смотреть в замедлении (автопилот трубы перебирает
   // десятки циклов взмаха): стенд считает её ускоренно.
   fastForward = false;
+  // Вибрация (ISO 2631, с.к.з. за 2 с) — мера длительной тряски. В стресс-тестах порывы и резкие рули — разовые толчки:
+  // их оценивают перегрузка по осям и модель удара, а вибрация на время манёвров и выводов из них не меряется.
+  private vibPaused = false;
   readonly r: ProgramResult;
   readonly timeLimit: number;
   private ctl: () => void = () => {};
@@ -257,10 +282,12 @@ export class ProgramRun {
       if (cls === 'fixed-wing') this.notApplicable(tr('самолёт не висит: используйте программу «Разбег и горизонтальный полёт»', 'an aeroplane does not hover: use the “Take-off run and level flight” programme'));
       else this.setupHover();
     } else {
-      if (cls !== 'fixed-wing')
+      if (cls !== 'fixed-wing' && id === 'stress') this.setupHeliStress();
+      else if (cls !== 'fixed-wing')
         this.notApplicable(spec.limits?.cruiseSpeed
           ? tr('программа для самолётов; машущему аппарату для полёта вперёд подходит «Свободный полёт махолёта»', 'this programme is for aeroplanes; for a forward-flying flapping vehicle use “Flapping-wing free flight”')
           : tr('программа для самолётов; для винтов и машущих крыльев — «Взлёт и висение»', 'this programme is for aeroplanes; for rotors and flapping wings use “Take-off and hover”'));
+      else if (id === 'stress') this.setupStress();
       else this.setupFlight(id === 'max');
     }
   }
@@ -1068,6 +1095,845 @@ export class ProgramRun {
     };
   }
 
+// ---------- стресс-тесты самолёта (нормы FAR 23 / CS-23, data/stress-tests.md) ----------
+
+  private setupStress() {
+    const sim = this.sim;
+    const thrC = this.control('throttle');
+    const pitchC = this.control('pitch');
+    const rollC = this.control('roll');
+    const yawC = this.control('yaw');
+    if (!thrC || !pitchC) {
+      this.notApplicable(tr('нужны органы управления «газ» и «тангаж»', 'throttle and pitch controls are required'));
+      return;
+    }
+    (this as { timeLimit: number }).timeLimit = 1500;
+    const rb = sim.root.b.rb;
+    const steps: StressStep[] = (this.r.stress = []);
+    const k = Math.sqrt(sim.rho / 1.225); // истинная → приборная (эквивалентная) скорость: EAS = TAS·√σ
+    const KT = 0.514444;
+    const eas = () => sim.sample.airspeed * k;
+    const W = sim.totalMass * sim.g;
+    let S = 0, cS = 0, arS = 0;
+    for (const p of this.spec.parts) {
+      const a = p.aero;
+      if (!a || p.kind !== 'wing' || a.role === 'tail') continue;
+      const A = surfaceArea(a);
+      S += A;
+      cS += A * (A / a.span);
+      arS += A * (a.aspectRatio ?? (2 * a.span * a.span) / A);
+    }
+    const chord = S > 0 ? cS / S : 1, AR = S > 0 ? arS / S : 6;
+    // Скорости по нормам (§23.335, нормальная категория): VC ≥ 33·√(W/S) узлов (W/S в фунтах на кв. фут), VD ≥ 1,4·VC,
+    // VA = VS·√n. VS — по c_l,max крыла (стенд сверил её с POH Cessna: 53 KCAS).
+    const nLim = this.spec.limits?.loadFactor ?? 3.8;
+    const nNeg = -0.4 * nLim; // §23.337(b)
+    const wsPsf = W / S / 47.880259;
+    const VS = estimateStallSpeed(this.spec, 1.225, sim.totalMass); // приборная
+    const VA = VS * Math.sqrt(nLim);
+    const VC = 33 * Math.sqrt(wsPsf) * KT;
+    const VD = 1.4 * VC;
+    const H0 = 1500; // исходная высота над землёй для манёвров, м
+    const hMin = 900;
+    let lifts = 0;
+
+    // ---- регуляторы ----
+    let pitchI = 0, thetaI = 0, thrI = 0.6, rollI = 0, yawI = 0, nLp = 1;
+    const rates = () => {
+      const w = unrotate(rb.rotation(), copy(rb.angvel()));
+      return { p: (w.x * 180) / Math.PI, r: -(w.y * 180) / Math.PI, q: (w.z * 180) / Math.PI };
+    };
+    const gain = () => clamp((40 / Math.max(10, sim.sample.airspeed)) ** 2, 0.3, 4);
+    const setPitch = (x: number) => (sim.channels[pitchC.channel] = clamp(x, pitchC.min, pitchC.max));
+    // Тангаж: команда нарастает не быстрее 15°/с, а перегрузка ограничена (от 0,5 до 0,7 предельной) — как пилот,
+    // который не дёргает ручку при выводе в горизонт. Манёвры с перегрузкой идут через nHold, без этих ограничений.
+    let thS = 0, thT = -1;
+    const pitchHold = (thetaCmd: number) => {
+      const s = sim.sample, g = gain();
+      if (sim.t - thT > 3 * sim.dt) thS = s.pitchDeg;
+      thT = sim.t;
+      thS += clamp(thetaCmd - thS, -15 * sim.dt, 15 * sim.dt);
+      const nn = nLpUpd();
+      if (nn > 0.7 * nLim && thS > s.pitchDeg) { nHold(0.7 * nLim); return; }
+      if (nn < 0.5 && thS < s.pitchDeg) { nHold(0.5); return; }
+      const e = thS - s.pitchDeg;
+      pitchI = clamp(pitchI + 0.6 * e * sim.dt * g, pitchC.min, pitchC.max);
+      setPitch(pitchI + g * (1.5 * e - 0.5 * rates().q));
+    };
+    const climbHold = (vzCmd: number) => {
+      const s = sim.sample;
+      thetaI = clamp(thetaI + 1.5 * (vzCmd - s.vz) * sim.dt, -30, 30);
+      pitchHold(clamp(thetaI + 2.5 * (vzCmd - s.vz), -30, 30));
+    };
+    const altHold = (h: number) => climbHold(clamp(0.3 * (h - rb.translation().y), -6, 6));
+    // Обороты винта фиксированного шага — не выше номинальных (как делает пилот).
+    const rpmLimit = this.spec.actuators.some((a) => a.type === 'propeller' && a.fixedPitch) ? this.spec.powerplant.ratedRpm ?? Infinity : Infinity;
+    let thrCap = 1;
+    const setThrottle = (x: number) => {
+      if (Number.isFinite(rpmLimit)) thrCap = clamp(thrCap + 20 * (1 - sim.sample.propRpm / rpmLimit) * sim.dt, 0.05, 1);
+      sim.channels[thrC.channel] = clamp(Math.min(x, thrCap), 0, 1);
+    };
+    const speedHold = (vEas: number) => {
+      const err = vEas - eas();
+      thrI = clamp(thrI + 0.03 * err * sim.dt, 0, 1);
+      setThrottle(thrI + 0.25 * err);
+    };
+    // Перегрузка — рулём высоты: интеграл ошибки по сглаженной перегрузке (как в манёвре программы «Максимальный режим»).
+    let nLpT = -1;
+    const nLpUpd = () => {
+      if (nLpT !== sim.t) { nLp += (1 - Math.exp(-2 * Math.PI * 8 * sim.dt)) * (sim.sample.loadFactor - nLp); nLpT = sim.t; }
+      return nLp;
+    };
+    const nHold = (nCmd: number) => {
+      const e = nCmd - nLpUpd();
+      pitchI = clamp(pitchI + 30 * e * sim.dt, pitchC.min, pitchC.max);
+      setPitch(pitchI + 3 * e - 0.3 * rates().q);
+    };
+    // Срыв на основном крыле: доля сорванных сечений несущих крыльев (оперение не в счёт — у него срыв от руля).
+    const mainStalled = () => {
+      let a = 0, b = 0;
+      for (const p of sim.parts) if (p.spec.aero && p.spec.kind === 'wing' && p.spec.aero.role !== 'tail' && !p.broken) for (const e of p.elements) { b++; if (e.stalled) a++; }
+      return b ? a / b : 0;
+    };
+    const lateral = (phiCmd: number) => {
+      const s = sim.sample, g = gain();
+      if (rollC) {
+        const e = phiCmd - s.rollDeg;
+        rollI = clamp(rollI + 0.3 * e * sim.dt * g, rollC.min, rollC.max);
+        sim.channels[rollC.channel] = clamp(rollI + g * (0.8 * e - 0.3 * rates().p), rollC.min, rollC.max);
+      }
+      if (yawC) {
+        yawI = clamp(yawI + 0.5 * s.betaDeg * sim.dt * g, yawC.min, yawC.max);
+        sim.channels[yawC.channel] = clamp(yawI + g * 1.5 * s.betaDeg, yawC.min, yawC.max);
+      }
+    };
+    const fixLateral = () => {
+      if (rollC) sim.channels[rollC.channel] = 0;
+      if (yawC) sim.channels[yawC.channel] = 0;
+    };
+    const kt = (v: number) => n(v / KT);
+    const ensureAltitude = (need = hMin) => {
+      const h = rb.translation().y;
+      if (h < need) {
+        sim.shift(v3(0, Math.max(H0, need + 500) - h, 0));
+        lifts++;
+      }
+    };
+
+    // ---- шаги ----
+    type Step = { id: string; name: string; target: string; dur?: number; run: (t: number, rec: Rec) => boolean };
+    type Rec = { nMax: number; nMin: number; margin: number; part: string; vMax: number; rollMax: number; rollMin: number; betaMax: number; h0: number; x: Record<string, number> };
+    const newRec = (): Rec => ({ nMax: -Infinity, nMin: Infinity, margin: Infinity, part: '', vMax: 0, rollMax: -Infinity, rollMin: Infinity, betaMax: 0, h0: rb.translation().y, x: {} });
+    const pass = (rec: Rec, extra = true) => rec.margin >= 1.5 && extra;
+    const marginText = (rec: Rec) => (Number.isFinite(rec.margin) ? tr(`запас прочности ${n(rec.margin)} (${rec.part})`, `safety margin ${n(rec.margin)} (${rec.part})`) : tr('прочность не проверялась', 'strength not checked'));
+    const out = (st: Step, rec: Rec, ok: boolean | null, values: [string, string][], note?: string) =>
+      steps.push({ id: st.id, name: st.name, target: st.target, pass: ok, values: [...values, [tr('Прочность', 'Strength'), marginText(rec)]], note });
+
+    // Выход на режим: горизонтальный полёт на заданной приборной скорости (не дольше 40 с).
+    // Скорость — тангажом (каскад «скорость → вертикальная скорость → тангаж»): так пилот держит скорость на снижении,
+    // фугоида демпфируется контуром вертикальной скорости.
+    let vzI = 0;
+    const speedOnPitch = (v: number, vzMin = -40) => {
+      const e = eas() - v;
+      vzI = clamp(vzI + 0.1 * e * sim.dt, vzMin, 5);
+      climbHold(clamp(vzI + 1.0 * e, vzMin, 5));
+    };
+    let dive = false, okT = 0;
+    const trimAt = (v: number) => (t: number) => {
+      if (t < sim.dt * 1.5) { dive = false; okT = 0; }
+      lateral(0);
+      if (!dive && t > 10 && thrI > 0.98 && eas() < v - 2) { dive = true; vzI = sim.sample.vz; } // горизонтом не набирается — со снижением
+      if (dive) {
+        setThrottle(1);
+        speedOnPitch(v);
+      } else {
+        altHold(stepH);
+        speedHold(v);
+      }
+      // Установившийся режим: скорость, перегрузка 1 и (в горизонте) вертикальная скорость — 2 с подряд.
+      const steady = Math.abs(eas() - v) < 1.5 && Math.abs(nLpUpd() - 1) < 0.05 && Math.abs(rates().q) < 1;
+      okT = steady && (dive || Math.abs(sim.sample.vz) < 0.5) ? okT + sim.dt : 0;
+      return okT > 2 || t > 90;
+    };
+    // Симметричный манёвр с перегрузкой: нарастание 1,5 g/с, удержание 3 с (§23.305: предельная — без остаточных
+    // деформаций; расчётная 1,5× — запас прочности ≥ 1,5).
+    const pull = (nT: number) => (t: number, rec: Rec) => {
+      nHold(1 + (nT - 1) * smooth(t / (nT < 1 ? 1.5 : 0.9)));
+      lateral(0);
+      setThrottle(thrI);
+      if (Math.abs(nLp - nT) < 0.05 * Math.abs(nT - 1) && rec.x.reached === undefined) rec.x.reached = t;
+      return (rec.x.reached !== undefined && t - rec.x.reached > 1) || t > 8;
+    };
+    const nSafe = (nT: number) => Math.min(nT, 0.8 * (eas() / VS) ** 2);
+    const smooth = (x: number) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
+    let nRec0 = 1;
+    const recover = (t: number) => {
+      // Сначала плавно снять перегрузку (1,5 с), как пилот после манёвра; потом — горизонт и скорость.
+      if (t < sim.dt * 1.5) nRec0 = nLpUpd();
+      if (t < 1.5 && Math.abs(nRec0 - 1) > 0.3) {
+        nHold(nRec0 + (1 - nRec0) * smooth(t / 1.5));
+        lateral(0);
+        setThrottle(thrI);
+        if (t > 1.5 - 1.5 * sim.dt) { pitchI = sim.channels[pitchC.channel]; thetaI = sim.sample.pitchDeg; }
+        return false;
+      }
+      altHold(stepH);
+      speedHold(VA);
+      lateral(0);
+      return t > 10;
+    };
+    let stepH = H0;
+
+    const seq: { trim?: number; minH?: number; step: Step; after?: (rec: Rec, st: Step) => void }[] = [];
+    // 1–3. Перегрузки по углам диаграммы V–n.
+    // На VA предельная перегрузка — на границе срыва, а пока она нарастает (0,9 с), скорость падает. Поэтому вход — на 1,05·VA.
+    seq.push({ trim: 1.05 * VA, step: { id: 'pullVA', name: tr(`Перегрузка +${n(nLim)} g на VA`, `+${n(nLim)} g at VA`), target: tr(`VA = ${kt(VA)} узл. (VS·√n), вход на 1,05·VA, 1 с на перегрузке`, `VA = ${kt(VA)} kt (VS·√n), entry at 1.05·VA, 1 s at the load factor`), run: (t, rec) => {
+      if (sim.sample.loadFactor > (rec.x.nTop ?? -Infinity)) { rec.x.nTop = sim.sample.loadFactor; rec.x.vTop = eas(); }
+      return pull(nLim)(t, rec);
+    } },
+      after: (rec, st) => out(st, rec, pass(rec), [[tr('Перегрузка', 'Load factor'), n(rec.nMax)], [tr('Скорость на наибольшей перегрузке', 'Speed at the peak load factor'), `${kt(rec.x.vTop ?? NaN)} ${tr('узл.', 'kt')}`]], rec.nMax < 0.95 * nLim ? tr('предельная перегрузка не достигнута: крыло срывается раньше', 'the limit load factor was not reached: the wing stalls first') : undefined) });
+    seq.push({ trim: VC, step: { id: 'pullVC', name: tr(`Перегрузка +${n(nLim)} g на VC`, `+${n(nLim)} g at VC`), target: tr(`VC = ${kt(VC)} узл. (33·√(W/S)), 1 с на перегрузке`, `VC = ${kt(VC)} kt (33·√(W/S)), 1 s at the load factor`), run: pull(nLim) },
+      after: (rec, st) => out(st, rec, pass(rec), [[tr('Перегрузка', 'Load factor'), n(rec.nMax)]]) });
+    seq.push({ trim: VC, step: { id: 'pushVC', name: tr(`Перегрузка ${n(nNeg)} g на VC`, `${n(nNeg)} g at VC`), target: tr('0,4 положительной (§23.337), 1 с на перегрузке', '0.4 of the positive (§23.337), 1 s at the load factor'), run: pull(nNeg) },
+      after: (rec, st) => out(st, rec, pass(rec), [[tr('Перегрузка', 'Load factor'), n(rec.nMin)]]) });
+    // 4–5. Порывы (§23.333(c), §23.341): 1-cos длиной 25 хорд, ±15,24 м/с на VC; руль закреплён.
+    const Ude = 50 * 0.3048;
+    const aw = (2 * Math.PI * AR) / (AR + 2);
+    const mug = (2 * (W / S)) / (1.225 * chord * aw * sim.g);
+    const Kg = (0.88 * mug) / (5.3 + mug);
+    const dnFormula = (Kg * Ude * VC * aw * 1.225) / (2 * (W / S));
+    for (const sign of [1, -1]) {
+      seq.push({ trim: VC, step: {
+        id: sign > 0 ? 'gustUp' : 'gustDown', name: sign > 0 ? tr('Порыв вверх на VC', 'Up-gust at VC') : tr('Порыв вниз на VC', 'Down-gust at VC'),
+        target: tr(`15,2 м/с (50 ft/s), форма 1 − cos длиной 25 хорд; по формуле норм n = ${n(1 + sign * dnFormula)}`, `15.2 m/s (50 ft/s), 1 − cos shape over 25 chords; regulation formula n = ${n(1 + sign * dnFormula)}`),
+        run: (t, rec) => {
+          const L = 25 * chord;
+          if (rec.x.e === undefined) {
+            rec.x.e = sim.channels[pitchC.channel];
+            // Порыв неподвижен в воздухе: фронт — в 2 м перед самым передним сечением, по направлению полёта.
+            const v = copy(rb.linvel());
+            const d = len(v) > 1 ? scale(v, 1 / len(v)) : v3(1, 0, 0);
+            let front = -Infinity;
+            for (const p of sim.parts) for (const e of p.elements) front = Math.max(front, dot(vsub(add(sim.pose(p).t, rotate(sim.pose(p).q, e.r)), rb.translation()), d));
+            const P0 = add(copy(rb.translation()), scale(d, front + 2));
+            const up = v3(0, sign * (Ude / 2), 0);
+            sim.gustAt = (pt) => {
+              const s = dot(vsub(pt, P0), d);
+              return s > 0 && s < L ? scale(up, 1 - Math.cos((2 * Math.PI * s) / L)) : v3();
+            };
+            rec.x.T = (L + 2 + 15) / sim.sample.airspeed; // пока весь самолёт (до 15 м) не выйдет из порыва
+          }
+          setPitch(rec.x.e);
+          setThrottle(thrI);
+          fixLateral();
+          return t > rec.x.T + 1.5;
+        },
+      }, after: (rec, st) => { sim.gustAt = null; out(st, rec, pass(rec), [[tr('Перегрузка в модели', 'Model load factor'), n(sign > 0 ? rec.nMax : rec.nMin)], [tr('По формуле норм', 'Regulation formula'), n(1 + sign * dnFormula)]]); } });
+    }
+    // 6. Резкое движение рулём высоты на VA (§23.423): полностью на себя, затем от себя.
+    seq.push({ trim: VA, step: { id: 'checked', name: tr('Резкое движение руля высоты на VA', 'Checked pitch manoeuvre at VA'), target: tr('полностью на себя до предельной перегрузки, затем от себя (§23.423)', 'full aft stick to the limit load factor, then forward (§23.423)'),
+      run: (t, rec) => {
+        lateral(0);
+        setThrottle(thrI);
+        if (rec.x.back === undefined && (sim.sample.loadFactor >= nLim || t > 1.5)) rec.x.back = t;
+        if (rec.x.back === undefined) setPitch(pitchC.max);
+        else if (t - rec.x.back < 0.5) setPitch(pitchC.min);
+        else setPitch(0);
+        return rec.x.back !== undefined && t - rec.x.back > 2.5;
+      } },
+      after: (rec, st) => out(st, rec, pass(rec, rec.nMax <= nLim * 1.05), [[tr('Перегрузка', 'Load factor'), `${n(rec.nMax)} / ${n(rec.nMin)}`]], rec.nMax > nLim * 1.05 ? tr('перегрузка превысила предельную: резкий руль на VA перегружает самолёт', 'the load factor exceeded the limit: abrupt elevator at VA overloads the aeroplane') : undefined) });
+    // 7. Вывод с креном (§23.349): 2/3 предельной перегрузки и полный элерон.
+    if (rollC)
+      seq.push({ trim: VA, step: { id: 'rollPull', name: tr('Вывод с креном на VA', 'Rolling pull-out at VA'), target: tr(`из разворота с креном 60°: перегрузка ${n((2 / 3) * nLim)} g (2/3 предельной) и полный элерон на вывод за 0,2 с (§23.349, §23.455)`, `from a 60° banked turn: ${n((2 / 3) * nLim)} g (2/3 of the limit) and full aileron to roll out in 0.2 s (§23.349, §23.455)`),
+        run: (t, r) => {
+          const s = sim.sample, n23 = (2 / 3) * nLim;
+          setThrottle(thrI);
+          if (r.x.pull === undefined) {
+            // Ввод в разворот с креном 60° (перегрузка 1/cos крена).
+            lateral(60);
+            nHold(1 / Math.cos((Math.min(Math.abs(s.rollDeg), 60) * Math.PI) / 180));
+            if (Math.abs(s.rollDeg - 60) < 5) r.x.bankT ??= t; else delete r.x.bankT;
+            if ((r.x.bankT !== undefined && t - r.x.bankT > 0.5) || t > 10) { r.x.pull = t; r.x.n0 = nLpUpd(); }
+            return false;
+          }
+          if (r.x.roll === undefined) {
+            lateral(60);
+            nHold(r.x.n0 + (n23 - r.x.n0) * smooth((t - r.x.pull) / 0.9));
+            if (Math.abs(nLp - n23) < 0.05 * n23 || t - r.x.pull > 3) { r.x.roll = t; r.x.phi0 = s.rollDeg; r.x.pMax = 0; }
+            return false;
+          }
+          if (r.x.off === undefined) {
+            // Полный элерон на вывод из крена (влево) за 0,2 с, перегрузка держится; педали нейтрально.
+            nHold(n23);
+            sim.channels[rollC.channel] = rollC.min * Math.min(1, (t - r.x.roll) / 0.2);
+            if (yawC) sim.channels[yawC.channel] = 0;
+            r.x.pMax = Math.max(r.x.pMax, Math.abs(rates().p));
+            if (s.rollDeg <= r.x.phi0 - 60 || t - r.x.roll > 3) r.x.off = t;
+            return false;
+          }
+          lateral(0);
+          nHold(1);
+          return t - r.x.off > 1.5;
+        } },
+        after: (rec, st) => out(st, rec, pass(rec), [[tr('Перегрузка', 'Load factor'), n(rec.nMax)], [tr('Крен', 'Bank'), `${n(rec.x.phi0 ?? NaN)}° → ${n(rec.rollMin)}°`],
+          [tr('Наибольшая угловая скорость крена', 'Peak roll rate'), `${n(rec.x.pMax ?? NaN)} °/${tr('с', 's')}`]]) });
+    // 8. Полная педаль (§23.351): ступенька до заброса скольжения, затем нейтраль.
+    if (yawC)
+      seq.push({ trim: VA, step: { id: 'rudder', name: tr('Полная педаль на VA', 'Full rudder at VA'), target: tr('ступенька до наибольшего скольжения, затем нейтраль (§23.351)', 'step to the peak sideslip, then neutral (§23.351)'),
+        run: (t) => {
+          altHold(stepH);
+          setThrottle(thrI);
+          if (rollC) sim.channels[rollC.channel] = 0;
+          sim.channels[yawC.channel] = t < 3 ? yawC.max * Math.min(1, t / 0.2) : 0;
+          return t > 6;
+        } },
+        after: (rec, st) => out(st, rec, pass(rec), [[tr('Наибольшее скольжение', 'Peak sideslip'), `${n(rec.betaMax)}°`]]) });
+    // 9. Пикирование до VD (§23.251, §23.629): разгон на полном газе (не выше номинальных оборотов), 2 с на VD, вывод.
+    seq.push({ trim: VC, minH: 2500, step: { id: 'dive', name: tr('Пикирование до VD', 'Dive to VD'), target: tr(`VD = ${kt(VD)} узл. (1,4·VC); вывод с перегрузкой не выше предельной`, `VD = ${kt(VD)} kt (1.4·VC); pull-out within the limit load factor`),
+      run: (t, rec) => {
+        lateral(0);
+        setThrottle(1);
+        if (t < 1.5 * sim.dt) vzI = sim.sample.vz;
+        if (rec.x.at === undefined) {
+          if (eas() >= 0.98 * VD) rec.x.at = t;
+          speedOnPitch(VD, -80);
+          return t > 120;
+        }
+        if (t - rec.x.at < 1) {
+          speedOnPitch(VD, -80);
+          return false;
+        }
+        nHold(1 + (0.8 * nLim - 1) * smooth((t - rec.x.at - 1) / 1.5));
+        return sim.sample.vz > 0 || t - rec.x.at > 15;
+      } },
+      after: (rec, st) => {
+        const fl = this.r.flutter;
+        const flOk = !fl || Math.min(fl.vFlutter, fl.vDivergence) > 1.2 * (VD / k);
+        const reached = rec.vMax * k >= 0.98 * VD;
+        const rpmOk = !Number.isFinite(rpmLimit) || (rec.x.rpm ?? 0) <= 1.1 * rpmLimit;
+        out(st, rec, pass(rec, reached && flOk && rpmOk), [[tr('Наибольшая приборная скорость', 'Max equivalent airspeed'), `${kt(rec.vMax * k)} ${tr('узл.', 'kt')}`],
+          [tr('Обороты винта', 'Propeller rpm'), `${n(rec.x.rpm ?? 0)}${Number.isFinite(rpmLimit) ? tr(` (номинальные ${n(rpmLimit)}, на VD допускается до ${n(1.1 * rpmLimit)}, §23.33)`, ` (rated ${n(rpmLimit)}, up to ${n(1.1 * rpmLimit)} allowed at VD, §23.33)`) : ''}`], [tr('Флаттер', 'Flutter'), fl ? `${n(Math.min(fl.vFlutter, fl.vDivergence))} ${tr('м/с', 'm/s')} (${tr('нужно > 1,2·VD', 'must exceed 1.2·VD')})` : tr('не проверялся (у крыла не задан кессон)', 'not checked (no torsion box)')]],
+          !reached ? tr('VD не достигнута: не хватает высоты или скорость упирается в сопротивление', 'VD was not reached')
+            : !rpmOk ? tr('винт фиксированного шага раскрутился выше 110 % номинальных оборотов даже с убранным газом: на пикировании его раскручивает поток', 'the fixed-pitch propeller overspeeds past 110 % of rated rpm even with the throttle closed: in the dive the airflow windmills it')
+            : (rec.x.rpm ?? 0) > rpmLimit * 1.02 ? tr('обороты выше номинальных, но в пределах 110 %: газ на пикировании убирается, винт раскручивает поток', 'rpm above rated but within 110 %: the throttle is closed in the dive, the airflow windmills the propeller') : undefined);
+      } });
+    // 10–12. Сваливания (§23.201, §23.203): торможение 1 узел/с (ускоренное — 4 узла/с), на срыве органы закрепляются.
+    const stall = (id: string, name: string, target: string, bank: number, rateKt: number, limits: [number, number]) =>
+      seq.push({ trim: 1.5 * VS, step: { id, name, target,
+        run: (t, rec) => {
+          setThrottle(bank ? thrI : 0);
+          if (rec.x.v0 === undefined) { rec.x.v0 = eas(); vzI = sim.sample.vz; }
+          if (rec.x.brk === undefined) {
+            const vCmd = rec.x.v0 - rateKt * KT * t;
+            const s = sim.sample;
+            lateral(bank);
+            if (bank && rateKt > 2) nHold(Math.min(nLim, 1 / Math.cos((bank * Math.PI) / 180) + 0.5 * t));
+            else speedOnPitch(vCmd, -15);
+            const sat = sim.channels[pitchC.channel] >= pitchC.max - 0.5;
+            if (sat) rec.x.satT ??= t;
+            else delete rec.x.satT;
+            if (mainStalled() > 0.3 || (rec.x.satT !== undefined && t - rec.x.satT > 1) || t > 90) {
+              rec.x.brk = t;
+              rec.x.vStall = eas();
+              rec.x.phi0 = s.rollDeg;
+              rec.x.hBrk = rb.translation().y;
+              delete rec.x.hMin;
+              rec.rollMax = -Infinity;
+              rec.rollMin = Infinity;
+            }
+            return false;
+          }
+          // Срыв: 1 с органы закреплены (смотрим, куда валится), затем вывод — ручка от себя до безотрывного обтекания
+          // и 1,25·VS, газ, крылья в горизонт; потом выход из снижения с перегрузкой до 2.
+          if (t - rec.x.brk < 1) {
+            fixLateral();
+            return false;
+          }
+          lateral(0);
+          setThrottle(1);
+          if (rec.x.unst === undefined) {
+            setPitch(-5);
+            if (mainStalled() === 0 && eas() > 1.25 * VS) { rec.x.unst = t; rec.x.nU = nLpUpd(); }
+          } else nHold(nSafe(rec.x.nU + (2 - rec.x.nU) * smooth((t - rec.x.unst) / 0.9)));
+          return (rec.x.unst !== undefined && sim.sample.vz > -1) || t - rec.x.brk > 20;
+        } },
+        after: (rec, st) => {
+          const dir = Math.sign(bank) || 1;
+          const over = dir * (rec.x.phi0 ?? 0) >= 0 ? Math.max(dir * rec.rollMax, dir * rec.rollMin) : 0;
+          const against = Math.max(-dir * rec.rollMax, -dir * rec.rollMin);
+          const ok = bank ? over <= limits[0] && against <= limits[1] : Math.max(Math.abs(rec.rollMax), Math.abs(rec.rollMin)) <= limits[0];
+          out(st, rec, pass(rec, ok), [[tr('Скорость сваливания', 'Stall speed'), `${kt(rec.x.vStall ?? NaN)} ${tr('узл.', 'kt')}`],
+            [tr('Крен после срыва', 'Bank after the stall'), `${n(rec.rollMin)}…${n(rec.rollMax)}°`], [tr('Потеря высоты от срыва', 'Height loss from the break'), `${n((rec.x.hBrk ?? rec.h0) - (rec.x.hMin ?? rec.h0))} ${tr('м', 'm')}`]]);
+        } });
+    stall('stall', tr('Сваливание с прямой', 'Wings-level stall'), tr('торможение 1 узел/с, газ убран; крен после срыва не больше 15° (§23.201)', '1 kt/s deceleration, power idle; bank after the stall within 15° (§23.201)'), 0, 1, [15, 15]);
+    if (rollC) {
+      stall('turnStall', tr('Сваливание в развороте 30°', 'Turning stall, 30° bank'), tr('1 узел/с; крен не больше 60° в сторону разворота и 30° против (§23.203)', '1 kt/s; bank within 60° into the turn and 30° against (§23.203)'), 30, 1, [60, 30]);
+      stall('accStall', tr('Ускоренное сваливание в развороте', 'Accelerated turning stall'), tr('30°, торможение 4 узла/с с ростом перегрузки; крен не больше 90° и 60° (§23.203)', '30°, 4 kt/s with rising load factor; bank within 90° and 60° (§23.203)'), 30, 4, [90, 60]);
+    }
+    // 13. Штопор на один виток (§23.221): на срыве руль высоты полностью на себя и педаль до упора, элероны нейтрально;
+    // виток (или 3 с), затем вывод: педаль против, ручка от себя. Вывод — не больше чем за ещё один виток.
+    if (yawC)
+      seq.push({ trim: 1.5 * VS, step: { id: 'spin', name: tr('Штопор, один виток', 'One-turn spin'), target: tr('вывод не больше чем за ещё один виток; скорость и перегрузка в пределах (§23.221)', 'recovery within one additional turn; speed and load factor within limits (§23.221)'),
+        run: (t, rec) => {
+          setThrottle(0);
+          const s = sim.sample;
+          if (rec.x.entry === undefined) {
+            lateral(0);
+            if (t < 1.5 * sim.dt) vzI = s.vz;
+            speedOnPitch(1.5 * VS - KT * t, -15);
+            if (mainStalled() > 0.3 || t > 60) { rec.x.entry = t; rec.x.psi = s.headingDeg; rec.x.turn = 0; }
+            return false;
+          }
+          // Курс накапливается по угловой скорости рыскания.
+          rec.x.turn += (rates().r * sim.dt) / 360;
+          if (rec.x.rec === undefined) {
+            setPitch(pitchC.max);
+            sim.channels[yawC.channel] = yawC.max;
+            if (rollC) sim.channels[rollC.channel] = 0;
+            if (Math.abs(rec.x.turn) >= 1 && t - rec.x.entry >= 3) { rec.x.rec = t; rec.x.turnAtRec = rec.x.turn; }
+            else if (t - rec.x.entry > 15) { rec.x.rec = t; rec.x.turnAtRec = rec.x.turn; rec.x.noSpin = 1; }
+            return false;
+          }
+          if (rec.x.stopped === undefined) {
+            sim.channels[yawC.channel] = yawC.min;
+            setPitch(-10);
+            if (rollC) sim.channels[rollC.channel] = 0;
+            if (Math.abs(rates().r) < 10) { rec.x.stopped = t; rec.x.extra = Math.abs(rec.x.turn - rec.x.turnAtRec); }
+            return t - rec.x.rec > 30;
+          }
+          sim.channels[yawC.channel] = 0;
+          lateral(0);
+          if (Math.abs(sim.sample.rollDeg) > 30) nHold(1);
+          else if (eas() > 1.3 * VS) nHold(nSafe(Math.min(nLim * 0.8, 3)));
+          else setPitch(-5);
+          return sim.sample.vz > 0 || t - rec.x.stopped > 15;
+        } },
+        after: (rec, st) => {
+          const extra = rec.x.extra ?? Infinity;
+          const spun = !rec.x.noSpin;
+          out(st, rec, spun ? pass(rec, extra <= 1 && rec.vMax * k <= 0.9 * VD && rec.nMax <= nLim) : null,
+            [[tr('Витков до вывода', 'Turns before recovery'), n(Math.abs(rec.x.turnAtRec ?? 0))], [tr('Витков на выводе', 'Turns during recovery'), Number.isFinite(extra) ? n(extra) : tr('не вышел', 'did not recover')],
+              [tr('Наибольшая скорость', 'Max speed'), `${kt(rec.vMax * k)} ${tr('узл.', 'kt')}`], [tr('Перегрузка на выводе', 'Pull-out load factor'), n(rec.nMax)], [tr('Потеря высоты', 'Height loss'), `${n(rec.h0 - (rec.x.hMin ?? rec.h0))} ${tr('м', 'm')}`]],
+            spun ? undefined : tr('в штопор не вошёл: за 15 с не сделал витка — модель крыла после срыва по полосам, сваливание на одно крыло может не воспроизводиться', 'did not enter a spin: no full turn in 15 s — the post-stall strip model may not reproduce a wing drop'));
+        } });
+
+    if (this.opts.stressOnly?.length) {
+      const keep = new Set(this.opts.stressOnly);
+      for (let j = seq.length - 1; j >= 0; j--) if (!keep.has(seq[j].step.id)) seq.splice(j, 1);
+    }
+    // ---- исполнитель ----
+    const h0 = rb.translation().y;
+    sim.lockRoot('planar');
+    let i = -1, sub: 'takeoff' | 'trim' | 'step' | 'recover' = 'takeoff', t0 = 0;
+    let rec = newRec();
+    const vr = 1.2 * VS / k;
+    this.ctl = () => {
+      const s = sim.sample;
+      const t = sim.t - t0;
+      const h = rb.translation().y;
+      // В браузере выход на режим и возврат в горизонт между манёврами досчитываются ускоренно; взлёт и сами манёвры —
+      // в реальном времени.
+      this.fastForward = sub === 'trim' || sub === 'recover';
+      this.vibPaused = sub === 'step' || sub === 'recover';
+      if (sub !== 'takeoff') {
+        // Запись по шагу.
+        rec.nMax = Math.max(rec.nMax, s.loadFactor);
+        rec.nMin = Math.min(rec.nMin, s.loadFactor);
+        rec.vMax = Math.max(rec.vMax, s.airspeed);
+        rec.rollMax = Math.max(rec.rollMax, s.rollDeg);
+        rec.rollMin = Math.min(rec.rollMin, s.rollDeg);
+        rec.betaMax = Math.max(rec.betaMax, Math.abs(s.betaDeg));
+        rec.x.hMin = Math.min(rec.x.hMin ?? h, h);
+        rec.x.rpm = Math.max(rec.x.rpm ?? 0, s.propRpm);
+        if (s.minMargin < rec.margin) { rec.margin = s.minMargin; rec.part = s.minMarginPart; }
+      }
+      if (sub === 'takeoff') {
+        this.phase = tr('взлёт', 'take-off');
+        setThrottle(1);
+        pitchHold(s.airspeed >= vr ? 10 : 0);
+        if (h > h0 + 20) {
+          // Набор высоты пропускается: самолёт переносится на исходную высоту манёвров (плотность воздуха в стенде —
+          // по высоте испытания, от положения над землёй не зависит).
+          sim.shift(v3(0, H0 - h, 0));
+          sim.lockRoot('free');
+          lifts++;
+          i = 0; sub = 'trim'; t0 = sim.t; thetaI = s.pitchDeg;
+        } else if (sim.t > 90) {
+          this.r.notes.push(tr('за 90 с не взлетел', 'did not take off in 90 s'));
+          this.finish();
+        }
+        return;
+      }
+      const cur = seq[i];
+      if (sub === 'trim') {
+        this.phase = tr(`подготовка: ${cur.step.name}`, `setting up: ${cur.step.name}`);
+        if (trimAt(cur.trim ?? VA)(t)) {
+          ensureAltitude(cur.minH);
+          stepH = rb.translation().y;
+          sub = 'step'; t0 = sim.t; rec = newRec();
+        }
+        return;
+      }
+      if (sub === 'step') {
+        this.phase = cur.step.name;
+        if (cur.step.run(t, rec)) {
+          cur.after?.(rec, cur.step);
+          sub = 'recover'; t0 = sim.t;
+          pitchI = sim.channels[pitchC.channel];
+          thetaI = s.pitchDeg;
+        }
+        return;
+      }
+      this.phase = tr('выход в горизонт', 'recovering to level flight');
+      if (recover(t)) {
+        i++;
+        if (i >= seq.length) {
+          this.r.notes.push(tr('вибрация в кресле измерена только в установившемся полёте между манёврами: порывы, резкие рули и выводы — разовые толчки, их оценивают перегрузка по осям и модель удара', 'seat vibration is measured only in steady flight between manoeuvres: gusts, abrupt controls and recoveries are one-off jolts, assessed by the g-load by axis and the impact model'));
+          if (lifts > 1) this.r.notes.push(tr(`между манёврами самолёт ${lifts - 1} раз переносился на исходную высоту ${H0} м — набор высоты не считался`, `between manoeuvres the aeroplane was moved back to ${H0} m ${lifts - 1} times — the climbs were not simulated`));
+          this.finish();
+          return;
+        }
+        ensureAltitude();
+        stepH = rb.translation().y;
+        sub = 'trim'; t0 = sim.t;
+      }
+    };
+  }
+
+  // ---------- стресс-тесты вертолёта (нормы FAR 27, ограничения R22) ----------
+  // Вертолёт взлетает, висит, разгоняется и проходит серию: перегрузки ручкой циклического шага, малая перегрузка
+  // (демонстрация запрещённого у R22 режима), вертикальные порывы, полная педаль, отказ двигателя с переходом на
+  // авторотацию, полёт на 1,1·VNE. Источники и критерии — data/stress-tests.md (раздел B, D.2).
+  private setupHeliStress() {
+    const sim = this.sim;
+    const colC = this.control('lift'), lonC = this.control('pitch'), latC = this.control('roll'), pedC = this.control('yaw');
+    const rotorA = this.spec.actuators.find((a) => a.type === 'spinner' && a.cyclic && a.flapping && a.tailRotor?.channel);
+    if (!colC || !lonC || !latC || !pedC || !rotorA || rotorA.type !== 'spinner') {
+      this.notApplicable(tr('нужен вертолёт: несущий винт на шарнирах с циклическим шагом, хвостовой винт с педалями, органы «общий шаг», «тангаж», «крен», «курс»',
+        'a helicopter is required: an articulated main rotor with cyclic pitch, a tail rotor with pedals, and lift, pitch, roll and yaw controls'));
+      return;
+    }
+    (this as { timeLimit: number }).timeLimit = 1500;
+    sim.tailRotorFree = true;
+    // Прочность лопастей в полёте вперёд — справочно (README, раздел о R22 в полёте вперёд): лонжерон — эквивалентная
+    // коробка (в плоскости вращения слабее настоящего), подвеска втулки, гасящая кориолисовы силы, не опубликована.
+    // Запас у корня падает ниже 1 уже в горизонтальном полёте на 90 узлах — поэтому лопасти здесь не ломаются.
+    sim.opts.breakable = false;
+    this.r.strengthInfoOnly = tr('прочность лопастей в полёте вперёд — справочно: лонжерон — эквивалентная коробка (в плоскости вращения слабее настоящего), подвеска втулки не опубликована; запас у корня ниже 1 уже в горизонтальном полёте на 90 узлах',
+      'blade strength in forward flight is for reference only: the spar is an equivalent box (weaker in the plane of rotation than the real one) and the hub suspension is not published; the root margin is below 1 already in level flight at 90 kt');
+    const rb = sim.root.b.rb;
+    const rr = sim.rotors.find((x) => x.actuator === rotorA)!;
+    const steps: StressStep[] = (this.r.stress = []);
+    const k = Math.sqrt(sim.rho / 1.225);
+    const KT = 0.514444;
+    const pilot = new HeliPilot(sim, { col: colC, lon: lonC, lat: latC, ped: pedC }, rotorA.direction);
+    const eas = () => pilot.airBody().x * k;
+    const omNom = (rotorA.rpm * 2 * Math.PI) / 60;
+    const rpmFrac = () => Math.abs(rr.omega) / omNom;
+    const nLim = this.spec.limits?.loadFactor ?? 3.5; // §27.337: +3,5 / −1,0, если не обосновано иное
+    const VNE = this.spec.limits?.vne ?? 50;
+    const rpmOff = this.spec.limits?.rotorRpmOff ?? [0.9, 1.1];
+    const D = 2 * rr.radius;
+    const H0 = 600, hMin = 250;
+    let lifts = 0;
+    const kt = (v: number) => n(v / KT);
+    const ch = sim.channels;
+    const flapDeg = () => Math.max(...rr.blades.map((b) => Math.abs(b.flap?.beta ?? 0))) * (180 / Math.PI);
+    const ensureAltitude = () => {
+      const h = rb.translation().y;
+      if (h < hMin) { sim.shift(v3(0, H0 - h, 0)); lifts++; }
+    };
+    let nLp = 1, nLpT = -1;
+    const nLpUpd = () => {
+      if (nLpT !== sim.t) { nLp += (1 - Math.exp(-2 * Math.PI * 8 * sim.dt)) * (sim.sample.loadFactor - nLp); nLpT = sim.t; }
+      return nLp;
+    };
+    const smooth = (x: number) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
+
+    type Rec = { nMax: number; nMin: number; margin: number; part: string; rollMax: number; rollMin: number; betaMax: number; flapMax: number; rpmMin: number; rpmMax: number; x: Record<string, number> };
+    const newRec = (): Rec => ({ nMax: -Infinity, nMin: Infinity, margin: Infinity, part: '', rollMax: -Infinity, rollMin: Infinity, betaMax: 0, flapMax: 0, rpmMin: Infinity, rpmMax: 0, x: {} });
+    type Step = { id: string; name: string; target: string; run: (t: number, rec: Rec) => boolean };
+    const marginText = (rec: Rec) => (Number.isFinite(rec.margin) ? tr(`запас лопастей ${n(rec.margin)} (${rec.part}; справочно)`, `blade margin ${n(rec.margin)} (${rec.part}; reference only)`) : tr('прочность не проверялась', 'strength not checked'));
+    const out = (st: Step, rec: Rec, ok: boolean | null, values: [string, string][], note?: string) =>
+      steps.push({ id: st.id, name: st.name, target: st.target, pass: ok, values: [...values, [tr('Взмах лопастей, наибольший', 'Peak blade flapping'), `${n(rec.flapMax)}°`], [tr('Прочность', 'Strength'), marginText(rec)]], note });
+    // Критерии — лётные (мощность, обороты, запас хода органов управления); прочность лопастей — справочно.
+    const pass = (_rec: Rec, extra = true) => extra;
+    let stepH = H0;
+    // Ручки в момент начала манёвра — от них считаются отклонения.
+    const snap = () => ({ col: ch[colC.channel], lon: ch[lonC.channel], lat: ch[latC.channel], ped: ch[pedC.channel] });
+
+    // Выход на режим: горизонтальный полёт на заданной приборной скорости; если мощности не хватает — со снижением.
+    let okT = 0, dive = false;
+    const trimAt = (v: number) => (t: number) => {
+      if (t < 1.5 * sim.dt) { okT = 0; dive = false; }
+      const s = sim.sample;
+      if (!dive && v > 10 && t > 15 && s.power > 0.98 * sim.powerAvailable && eas() < v - 2) dive = true;
+      pilot.step(dive ? { vz: -4, u: v / k } : { h: stepH, u: v / k });
+      const w = pilot.rates();
+      const steady = Math.abs(eas() - v) < 1.5 && (dive || Math.abs(s.vz) < 0.7) && Math.abs(w.p) + Math.abs(w.q) < 3;
+      okT = steady ? okT + sim.dt : 0;
+      return okT > 3 || t > 60;
+    };
+    const recover = (t: number, rec: Rec) => {
+      const fw = rotorA.freewheel && ch[rotorA.freewheel] > 0.5;
+      if (fw) {
+        // После авторотации: обороты держит общий шаг, мотор подключается, когда они в пределах 1 % номинала.
+        const e = rpmFrac() - 1;
+        rec.x.cR = clamp((rec.x.cR ?? ch[colC.channel]) + 8 * e * sim.dt, colC.min, colC.max);
+        pilot.step({ collective: clamp(rec.x.cR + 40 * e, colC.min, colC.max), u: (65 * KT) / k });
+        if (Math.abs(e) < 0.01 || t > 30) ch[rotorA.freewheel!] = 0;
+        return false;
+      }
+      pilot.step({ h: stepH, u: (0.6 * VNE) / k });
+      return t > 8;
+    };
+
+    // Перегрузка ручкой: продольный циклический шаг держит перегрузку (ПИ по сглаженной перегрузке), общий шаг зажат.
+    const pullTo = (nT: number, ramp: number) => (t: number, rec: Rec, c0: ReturnType<typeof snap>) => {
+      const nn = nLpUpd();
+      const target = 1 + (nT - 1) * smooth(t / ramp);
+      const e = target - nn;
+      rec.x.lonI = clamp((rec.x.lonI ?? 0) + 6 * e * sim.dt, lonC.min - c0.lon, lonC.max - c0.lon);
+      const lon = clamp(c0.lon + rec.x.lonI + 1.5 * e - 0.3 * pilot.rates().q, lonC.min, lonC.max);
+      return lon;
+    };
+    const seq: { trim: number; step: Step; after: (rec: Rec, st: Step) => void }[] = [];
+
+    // 0. Висение вне влияния земли: мощность и запас педалей (§27.143: управляемость; хвостового винта должно хватать).
+    seq.push({ trim: 0, step: { id: 'hHover', name: tr('Висение вне влияния земли', 'Hover out of ground effect'), target: tr('мощности хватает; запас хода педалей не меньше 10 %', 'enough power; at least 10 % of pedal travel left'),
+      run: (t, rec) => {
+        pilot.step({ h: stepH, u: 0 });
+        if (t > 5) { rec.x.p = (rec.x.p ?? 0) + sim.sample.power; rec.x.ped = (rec.x.ped ?? 0) + ch[pedC.channel]; rec.x.n2 = (rec.x.n2 ?? 0) + 1; }
+        return t > 15;
+      } },
+      after: (rec, st) => {
+        const P = rec.x.p / rec.x.n2, ped = rec.x.ped / rec.x.n2;
+        const margin = Math.min(pedC.max - ped, ped - pedC.min) / (pedC.max - pedC.min);
+        this.r.hover = { achieved: P <= sim.powerAvailable, channel: ch[colC.channel], saturated: false, power: P, liftToWeightAtMax: NaN };
+        out(st, rec, pass(rec, P <= sim.powerAvailable && margin >= 0.1), [[tr('Мощность', 'Power'), `${n(P / 1000)} ${tr('кВт из', 'kW of')} ${n(sim.powerAvailable / 1000)}`],
+          [tr('Педали', 'Pedals'), tr(`${n(ped)}° (запас хода ${n(margin * 100)} %)`, `${n(ped)}° (${n(margin * 100)} % travel left)`)]]);
+      } });
+
+    // 1–2. Перегрузка ручкой циклического шага (§27.337, полётная проверка нагрузок §27.571: «cyclic pull-ups»).
+    for (const [id, frac] of [['hPull60', 0.6], ['hPull90', 0.9]] as const) {
+      let c0 = snap();
+      seq.push({ trim: frac * VNE, step: { id, name: tr(`Перегрузка ручкой на ${n(frac * 100)} % VNE`, `Cyclic pull-up at ${n(frac * 100)} % VNE`),
+        target: tr(`${kt(frac * VNE)} узл.; продольный циклический шаг на себя до +${n(nLim)} g (§27.337), общий шаг зажат`, `${kt(frac * VNE)} kt; aft cyclic to +${n(nLim)} g (§27.337), collective fixed`),
+        run: (t, rec) => {
+          if (t < 1.5 * sim.dt) { c0 = snap(); rec.x.u0 = eas(); }
+          const lon = pullTo(nLim, 1)(t, rec, c0);
+          pilot.step({ collective: c0.col, lonFixed: lon, theta: sim.sample.pitchDeg });
+          if (Math.abs(nLp - nLim) < 0.05 * nLim) rec.x.reached ??= t;
+          // До 1 с на перегрузке, или пока не упадёт скорость (тяги на большее нет) / не задерётся нос.
+          return (rec.x.reached !== undefined && t - rec.x.reached > 1) || eas() < 0.6 * rec.x.u0 || sim.sample.pitchDeg > 35 || t > 5;
+        } },
+        after: (rec, st) => out(st, rec, null, [[tr('Перегрузка', 'Load factor'), n(rec.nMax)], [tr('Обороты винта', 'Rotor rpm'), `${n(rec.rpmMin * 100)}…${n(rec.rpmMax * 100)} %`]],
+          rec.nMax < 0.95 * nLim ? tr(`предельная перегрузка не набрана: винт выходит на срыв лопастей раньше (наибольшая ${n(rec.nMax)} g); у R22 предельная перегрузка не опубликована`, `the limit load factor was not reached: the rotor stalls first (peak ${n(rec.nMax)} g); the R22 design limit is not published`) : undefined) });
+    }
+
+    // 3. Малая перегрузка (демонстрация): у R22 запрещена (POH, SN-11) — ручка от себя до 0,2 g, поперечный шаг и педали зажаты.
+    {
+      let c0 = snap();
+      seq.push({ trim: 0.6 * VNE, step: { id: 'hLowG', name: tr('Малая перегрузка (демонстрация опасного режима)', 'Low-G pushover (hazard demonstration)'),
+        target: tr('ручка от себя до 0,2 g на 1,5 с, поперечный шаг и педали зажаты: куда кренится вертолёт с качающейся втулкой (у R22 режим запрещён, POH)', 'forward cyclic to 0.2 g for 1.5 s, lateral cyclic and pedals fixed: where a teetering-rotor helicopter rolls (prohibited on the R22, POH)'),
+        run: (t, rec) => {
+          if (t < 1.5 * sim.dt) { c0 = snap(); rec.x.phi0 = sim.sample.rollDeg; rec.x.pMax = 0; }
+          const lon = pullTo(0.2, 0.7)(t, rec, c0);
+          pilot.step({ collective: c0.col, lonFixed: lon, latFixed: c0.lat, pedFixed: c0.ped, theta: sim.sample.pitchDeg });
+          rec.x.pMax = Math.max(rec.x.pMax, Math.abs(pilot.rates().p));
+          rec.x.dphi = sim.sample.rollDeg - rec.x.phi0;
+          return t > 2.2 || Math.abs(rec.x.dphi) > 60;
+        } },
+        after: (rec, st) => out(st, rec, null, [[tr('Перегрузка', 'Load factor'), n(rec.nMin)], [tr('Крен за манёвр', 'Roll during the manoeuvre'), `${n(rec.x.dphi ?? 0)}° (${(rec.x.dphi ?? 0) >= 0 ? tr('вправо', 'right') : tr('влево', 'left')})`],
+          [tr('Наибольшая угловая скорость крена', 'Peak roll rate'), `${n(rec.x.pMax ?? 0)} °/${tr('с', 's')}`]],
+          tr('демонстрация: тяга несущего винта почти ноль, а хвостовой винт выше центра масс продолжает тянуть — вертолёт кренится вправо, поперечный шаг на малой тяге не помогает; выход — плавно ручку на себя, а не вбок (POH R22, SN-11)',
+            'demonstration: main-rotor thrust is near zero while the tail rotor above the centre of mass keeps pulling — the helicopter rolls right and lateral cyclic is ineffective at low thrust; recovery is gentle aft cyclic, not sideways (R22 POH, SN-11)')) });
+    }
+
+    // 4–6. Вертикальный порыв 30 ft/s (§27.341) на висении, на 0,6·VNE и на VNE; органы зажаты.
+    for (const [id, frac] of [['hGust0', 0], ['hGust60', 0.6], ['hGustVne', 1]] as const) {
+      let c0 = snap();
+      const Ude = 30 * 0.3048;
+      seq.push({ trim: frac * VNE, step: { id, name: frac ? tr(`Вертикальный порыв на ${n(frac * 100)} % VNE`, `Vertical gust at ${n(frac * 100)} % VNE`) : tr('Вертикальный порыв на висении', 'Vertical gust in hover'),
+        target: tr(`9,1 м/с (30 ft/s, §27.341), форма 1 − cos ${frac ? `длиной ${n(2 * D)} м (два диаметра винта)` : 'за 2 с'}; органы зажаты`, `9.1 m/s (30 ft/s, §27.341), 1 − cos shape ${frac ? `over ${n(2 * D)} m (two rotor diameters)` : 'over 2 s'}; controls fixed`),
+        run: (t, rec) => {
+          if (t < 1.5 * sim.dt) {
+            c0 = snap();
+            if (frac) {
+              const v = copy(rb.linvel());
+              const d = len(v) > 1 ? scale(v, 1 / len(v)) : v3(1, 0, 0);
+              const P0 = add(copy(rb.translation()), scale(d, rr.radius + 2));
+              const L = 2 * D;
+              sim.gustAt = (pt) => {
+                const s = dot(vsub(pt, P0), d);
+                return s > 0 && s < L ? v3(0, (Ude / 2) * (1 - Math.cos((2 * Math.PI * s) / L)), 0) : v3();
+              };
+              rec.x.T = (2 * D + 2 * rr.radius + 8) / Math.max(5, len(v));
+            } else rec.x.T = 2;
+          }
+          if (!frac) sim.opts.wind.y = t < 2 ? (Ude / 2) * (1 - Math.cos(Math.PI * t)) : 0;
+          pilot.step({ collective: c0.col, lonFixed: c0.lon, latFixed: c0.lat, pedFixed: c0.ped, theta: sim.sample.pitchDeg });
+          return t > rec.x.T + 0.3; // нагрузка от самого порыва (§27.341); дальше вертолёт ведёт лётчик
+        } },
+        after: (rec, st) => { sim.gustAt = null; sim.opts.wind.y = 0; out(st, rec, null, [[tr('Перегрузка', 'Load factor'), `${n(rec.nMax)} / ${n(rec.nMin)}`], [tr('Обороты винта', 'Rotor rpm'), `${n(rec.rpmMin * 100)}…${n(rec.rpmMax * 100)} %`]]); } });
+    }
+
+    // 7–8. Полная педаль за 0,2 с (§27.351): на висении и на 0,6·VNE, затем педали в балансировку.
+    for (const [id, frac] of [['hPedal0', 0], ['hPedal60', 0.6]] as const) {
+      let c0 = snap();
+      seq.push({ trim: frac * VNE, step: { id, name: frac ? tr(`Полная педаль на ${n(frac * 100)} % VNE`, `Full pedal at ${n(frac * 100)} % VNE`) : tr('Полная педаль на висении', 'Full pedal in hover'),
+        target: tr('педаль до упора за 0,2 с до наибольшего скольжения (не больше 90°), затем в балансировку (§27.351)', 'pedal to the stop in 0.2 s until the peak sideslip (up to 90°), then back to trim (§27.351)'),
+        run: (t, rec) => {
+          if (t < 1.5 * sim.dt) { c0 = snap(); rec.x.psi0 = sim.sample.headingDeg; rec.x.rMax = 0; rec.x.tMax = 0; rec.x.dpsi = 0; }
+          const dpsi = Math.abs(((sim.sample.headingDeg - rec.x.psi0 + 540) % 360) - 180);
+          rec.x.dpsi = Math.max(rec.x.dpsi, dpsi);
+          const turning = rec.x.off === undefined;
+          if (turning && (t > 3 || dpsi > 90 || (frac && t > 0.5 && Math.abs(sim.sample.betaDeg) < (rec.x.bPrev ?? 0)))) rec.x.off = t;
+          rec.x.bPrev = Math.abs(sim.sample.betaDeg);
+          const ped = turning ? c0.ped + (pedC.max - c0.ped) * Math.min(1, t / 0.2) : c0.ped;
+          pilot.step({ collective: c0.col, lonFixed: c0.lon, latFixed: c0.lat, pedFixed: ped, theta: sim.sample.pitchDeg });
+          rec.x.rMax = Math.max(rec.x.rMax, Math.abs(pilot.rates().r));
+          rec.x.tMax = Math.max(rec.x.tMax, Math.abs(sim.tailCache.get(rotorA.id)?.thrust ?? 0));
+          return rec.x.off !== undefined && t - rec.x.off > 1.5;
+        } },
+        after: (rec, st) => out(st, rec, null, [[frac ? tr('Наибольшее скольжение', 'Peak sideslip') : tr('Разворот', 'Heading change'), `${n(frac ? rec.betaMax : rec.x.dpsi)}°`],
+          [tr('Угловая скорость рыскания', 'Yaw rate'), `${n(rec.x.rMax)} °/${tr('с', 's')}`], [tr('Тяга хвостового винта', 'Tail-rotor thrust'), `${n(rec.x.tMax)} ${tr('Н', 'N')}`]],
+          tr('нагрузки хвостовой балки не считаются (у балки в модели нет силового набора)', 'tail-boom loads are not computed (the boom has no structure in the model)')) });
+    }
+
+    // 9. Полёт на 1,1·VNE (§27.175, AC 27-1: запас ручки на пикирование): запас продольного шага вперёд не меньше 10 %.
+    seq.push({ trim: 1.1 * VNE, step: { id: 'hVne', name: tr('Полёт на 1,1·VNE', 'Flight at 1.1·VNE'), target: tr(`${kt(1.1 * VNE)} узл.; запас хода ручки вперёд не меньше 10 % (§27.175, AC 27-1)`, `${kt(1.1 * VNE)} kt; at least 10 % forward cyclic travel left (§27.175, AC 27-1)`),
+      run: (t, rec) => {
+        // Мощности на горизонтальный полёт не хватает — со снижением, как на выходе на режим (общий шаг сверх мощности
+        // «съел» бы обороты).
+        pilot.step(dive ? { vz: -4, u: (1.1 * VNE) / k } : { h: stepH, u: (1.1 * VNE) / k });
+        rec.x.vz = (rec.x.vz ?? 0) + sim.sample.vz; rec.x.nv = (rec.x.nv ?? 0) + 1;
+        const lon = ch[lonC.channel];
+        rec.x.lonMin = Math.min(rec.x.lonMin ?? Infinity, lon);
+        rec.x.st = Math.max(rec.x.st ?? 0, sim.sample.stalledFrac);
+        return t > 6;
+      } },
+      after: (rec, st) => {
+        const m = (rec.x.lonMin - lonC.min) / (lonC.max - lonC.min);
+        out(st, rec, pass(rec, m >= 0.1), [[tr('Запас ручки вперёд', 'Forward cyclic left'), `${n(m * 100)} %`], [tr('Сорвано сечений', 'Stalled sections'), `${n(rec.x.st * 100)} %`],
+          [tr('Вертикальная скорость', 'Vertical speed'), `${n(rec.x.vz / rec.x.nv)} ${tr('м/с', 'm/s')}${dive ? tr(' (на горизонтальный полёт мощности нет)', ' (not enough power for level flight)') : ''}`], [tr('Обороты винта', 'Rotor rpm'), `${n(rec.rpmMin * 100)}…${n(rec.rpmMax * 100)} %`]],
+          m < 0.1 ? tr('ручки на пикирование почти не осталось', 'almost no forward cyclic left') : undefined);
+      } });
+
+    // 10. Отказ двигателя (§27.143(e)): на 0,9·VNE органы зажаты 1 с, затем общий шаг вниз — авторотация на 65 узлах.
+    // Последний шаг: программа заканчивается на авторотации (мотор шарнира в стенде без ограничения момента, и его
+    // повторное включение доводило бы обороты рывком — сотни киловатт за шаг расчёта).
+    if (rotorA.freewheel) {
+      let c0 = snap();
+      const fw = rotorA.freewheel;
+      const vAuto = 65 * KT;
+      seq.push({ trim: 0.9 * VNE, step: { id: 'hPowerFail', name: tr('Отказ двигателя на 0,9·VNE', 'Engine failure at 0.9·VNE'),
+        target: tr(`органы зажаты 1 с (§27.143(e)), затем авторотация на ${n(65)} узлах; установившиеся обороты — от ${n(rpmOff[0] * 100)} до ${n(rpmOff[1] * 100)} % (POH R22)`, `controls fixed for 1 s (§27.143(e)), then autorotation at 65 kt; steady rpm within ${n(rpmOff[0] * 100)}–${n(rpmOff[1] * 100)} % (R22 POH)`),
+        run: (t, rec) => {
+          if (t < 1.5 * sim.dt) { c0 = snap(); ch[fw] = 1; rec.x.cI = c0.col; rec.x.vz = 0; rec.x.nv = 0; rec.x.uS = 0; }
+          if (t < 1) {
+            pilot.step({ collective: c0.col, lonFixed: c0.lon, latFixed: c0.lat, pedFixed: c0.ped, theta: sim.sample.pitchDeg });
+            rec.x.rpm1 = rpmFrac();
+            return false;
+          }
+          // Общий шаг держит обороты (как лётчик на авторотации): обороты выше — шаг больше.
+          const e = rpmFrac() - 1;
+          rec.x.cI = clamp(rec.x.cI + 8 * e * sim.dt, colC.min, colC.max);
+          pilot.step({ collective: clamp(rec.x.cI + 40 * e, colC.min, colC.max), u: vAuto / k });
+          if (t > 12) {
+            rec.x.vz += sim.sample.vz; rec.x.uS += eas(); rec.x.nv++;
+            rec.x.sMin = Math.min(rec.x.sMin ?? Infinity, rpmFrac());
+            rec.x.sMax = Math.max(rec.x.sMax ?? 0, rpmFrac());
+          }
+          return t > 25;
+        } },
+        after: (rec, st) => {
+          const ok = rec.x.sMin >= rpmOff[0] && rec.x.sMax <= rpmOff[1];
+          out(st, rec, pass(rec, ok), [[tr('Обороты на установившейся авторотации', 'Rotor rpm in steady autorotation'), `${n(rec.x.sMin * 100)}…${n(rec.x.sMax * 100)} %`],
+            [tr('Обороты: наименьшие и через 1 с', 'Rotor rpm: lowest and after 1 s'), `${n(rec.rpmMin * 100)} %, ${n((rec.x.rpm1 ?? 1) * 100)} % (${tr('переходный минимум для R22 не опубликован', 'the R22 transient minimum is not published')})`],
+            [tr('Установившееся снижение', 'Steady descent'), `${n(-(rec.x.vz / Math.max(1, rec.x.nv)))} ${tr('м/с', 'm/s')} (${n(-(rec.x.vz / Math.max(1, rec.x.nv)) * 196.85)} ft/min) ${tr('на', 'at')} ${kt(rec.x.uS / Math.max(1, rec.x.nv))} ${tr('узл.; Robinson SN-38: на 60–70 узлах обычно меньше 1500 ft/min', 'kt; Robinson SN-38: usually below 1500 ft/min at 60–70 kt')}`]],
+            !ok ? tr('обороты вышли за пределы авторотации', 'rotor rpm left the autorotation limits') : undefined);
+        } });
+    }
+
+    if (this.opts.stressOnly?.length) {
+      const keep = new Set(this.opts.stressOnly);
+      for (let j = seq.length - 1; j >= 0; j--) if (!keep.has(seq[j].step.id)) seq.splice(j, 1);
+    }
+
+    // ---- исполнитель ----
+    sim.lockRoot('fixed');
+    for (const c of [colC, lonC, latC, pedC]) ch[c.channel] = c.initial;
+    let i = -1, sub: 'spin' | 'takeoff' | 'trim' | 'step' | 'recover' = 'spin', t0 = 0;
+    const done = () => {
+      this.r.notes.push(tr('вибрация в кресле измерена только в установившемся полёте между манёврами', 'seat vibration is measured only in steady flight between manoeuvres'));
+      if (lifts > 1) this.r.notes.push(tr(`между манёврами вертолёт ${lifts - 1} раз переносился на исходную высоту ${H0} м — набор высоты не считался`, `between manoeuvres the helicopter was moved back to ${H0} m ${lifts - 1} times — the climbs were not simulated`));
+      this.finish();
+    };
+    let rec = newRec();
+    const tSpin = (rotorA.rampTime ?? 4) + 1;
+    this.ctl = () => {
+      const s = sim.sample;
+      const t = sim.t - t0;
+      const h = rb.translation().y;
+      this.fastForward = sub === 'trim' || sub === 'recover';
+      this.vibPaused = sub === 'step' || sub === 'recover';
+      if (sub === 'step' || sub === 'recover') {
+        rec.nMax = Math.max(rec.nMax, s.loadFactor);
+        rec.nMin = Math.min(rec.nMin, s.loadFactor);
+        rec.rollMax = Math.max(rec.rollMax, s.rollDeg);
+        rec.rollMin = Math.min(rec.rollMin, s.rollDeg);
+        rec.betaMax = Math.max(rec.betaMax, Math.abs(s.betaDeg));
+        rec.flapMax = Math.max(rec.flapMax, flapDeg());
+        rec.rpmMin = Math.min(rec.rpmMin, rpmFrac());
+        rec.rpmMax = Math.max(rec.rpmMax, rpmFrac());
+        if (s.minMargin < rec.margin) { rec.margin = s.minMargin; rec.part = s.minMarginPart; }
+      }
+      if (sub === 'spin') {
+        this.phase = tr('раскрутка винта', 'rotor spin-up');
+        if (sim.t >= tSpin) { sim.lockRoot('free'); sub = 'takeoff'; t0 = sim.t; }
+        return;
+      }
+      if (sub === 'takeoff') {
+        this.phase = tr('взлёт', 'take-off');
+        // Подъём на 10 м, висение, разгон с набором до 40 м.
+        pilot.step(t < 10 ? { h: (this.spec.parts.find((p) => p.id === sim.root.spec.id)?.position[1] ?? 1) + 10, u: 0 } : { h: 40, u: Math.min(25, (t - 10) * 1.5) });
+        if (t > 10 && eas() > 18 && h > 35) {
+          sim.shift(v3(0, H0 - h, 0));
+          lifts++;
+          i = 0; sub = 'trim'; t0 = sim.t; stepH = rb.translation().y;
+        } else if (t > 90) {
+          this.r.notes.push(tr('за 90 с не взлетел', 'did not take off in 90 s'));
+          this.finish();
+        }
+        return;
+      }
+      const cur = seq[i];
+      if (sub === 'trim') {
+        this.phase = tr(`подготовка: ${cur.step.name}`, `setting up: ${cur.step.name}`);
+        if (trimAt(cur.trim)(t)) { ensureAltitude(); stepH = rb.translation().y; sub = 'step'; t0 = sim.t; rec = newRec(); nLp = s.loadFactor; }
+        return;
+      }
+      if (sub === 'step') {
+        this.phase = cur.step.name;
+        if (cur.step.run(t, rec)) {
+          cur.after(rec, cur.step);
+          if (i === seq.length - 1) done(); // последний шаг — сразу итог (после отказа двигателя мотор не включается)
+          else { sub = 'recover'; t0 = sim.t; }
+        }
+        return;
+      }
+      this.phase = tr('выход на режим', 'recovering');
+      if (recover(t, rec)) {
+        i++;
+        if (i >= seq.length) { done(); return; }
+        ensureAltitude();
+        stepH = rb.translation().y;
+        sub = 'trim'; t0 = sim.t;
+      }
+    };
+  }
+
   // ---------- общий цикл ----------
 
   private finish() {
@@ -1107,11 +1973,11 @@ export class ProgramRun {
       this.crewWin.push(this.crewLp);
       // Вибрация — полоса 2…16 Гц за 2 с по всем трём осям кресла: медленный рост перегрузки в манёвре к ней не относится.
       const av = s.crewAccelVec;
-      this.vib.push([av.x, av.y, av.z]);
+      if (!this.vibPaused) this.vib.push([av.x, av.y, av.z]);
       this.crewLoad.push(av);
       r.crewLoad = this.crewLoad.r;
       if (this.crewWin.full) r.crewSustainedG = Math.max(r.crewSustainedG, this.crewWin.mean);
-      if (this.vib.full) r.vibrationRms = Math.max(r.vibrationRms, this.vib.rms);
+      if (this.vib.full && !this.vibPaused) r.vibrationRms = Math.max(r.vibrationRms, this.vib.rms);
     }
     r.maxMach = Math.max(r.maxMach, s.maxMach);
     r.airspeedMax = Math.max(r.airspeedMax, s.airspeed);

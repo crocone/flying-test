@@ -4,6 +4,172 @@
 
 > The check scripts (`npm run check`, `npm run physics`) print outcomes in Russian: ПРОЙДЕН = PASS, РАСХОЖДЕНИЕ = DIVERGENCE (a known, explained mismatch with measurements), ПРОВАЛ = FAIL, СПРАВОЧНО = INFO. The stand UI has a Russian/English switch.
 
+## R22 in free flight and its stress tests to FAR 27 (2026-11-24)
+
+```bash
+VALIDATE_ONLY=helistress npm run physics -- --validate   # the helicopter series vs. the R22 POH and Robinson safety notices (~10 min)
+VALIDATE_ONLY=heli,r22 npm run physics -- --validate     # earlier R22 checks, re-run after the rotor changes
+npm run check   # everything together (both stress sections included): 505 checks — 389 pass, 115 "DIVERGENCE", 1 failure: three new R22 names had no English translation — fixed after the run and checked separately
+```
+
+### Free flight
+
+Until now the helicopter was only ever tested with its body held (hover — vertical only, forward flight — in a "tunnel").
+For the stress tests it now flies freely in all six degrees of freedom:
+
+- **Tail rotor as a force** (`Sim.tailRotorFree`, `tailRotor.at`, `tailRotor.channel`). The pedals set the tail-rotor blade pitch;
+  thrust comes from BEMT with the flow through the disc (sideslip and yaw rate change it — this is what gives the tail rotor its
+  weathercock effect), and it acts on the boom. Its power is taken from the main rotor shaft, as before. Programmes with the
+  body held keep the old model (thrust = rotor torque / arm).
+- **Body rates in the flapping equation.** The inertial moment about each hinge is now summed over the blade elements, the same
+  way the loads are: Iβ·β̈ = M + M_g − Σ m·(d × (ω̇ × d + ω × (ω × d)))·ê, with ω the hub's rotation together with the body. When
+  the fuselage pitches, the disc lags behind the shaft and damps it (checked: at q = 0.2 rad/s the disc tilts 0.38° forward
+  relative to the shaft; theory a₁ = −16q/(γΩ) gives about 0.7° for an estimated Lock number of 4.5). Gravity in the flapping
+  equation is now g − a_hub: in a pull-up the blades cone up.
+- **No false gyroscope.** The blades are rigid Rapier bodies with the flapping laid over them, so when the fuselage turned,
+  Rapier turned the whole spinning rotor with it and sent its gyroscopic moment into the fuselage through the joint — hundreds of
+  N·m per 0.1 rad/s, a false pitch-roll coupling that made free hover diverge. A real hinge cannot transmit it; that moment is now
+  applied to the blade body itself.
+- **R22 geometry** from the maintenance manual drawing (ch. 16, fig. 16-2, scaled by the 259 in dimension): horizontal stabiliser
+  34 in span, about 8 in chord, 148 in behind the mast, set 2.8–3.3° nose down; upper and lower fins about 18 and 17 in tall;
+  tail rotor 174 in behind the mast (POH: 172), 73 in above ground.
+- **The centre of gravity was 5.4 in behind the mast** — outside the R22 envelope (POH fig. on p. 2-5: about 95–102 in, mast at
+  station 100). With the body held it did not matter; in free flight it was a 1000 N·m nose-up moment. The cabin mass is now
+  0.215 m forward, putting the CG at station 98 (an estimate inside the envelope).
+- **The engine as a torque with a power limit.** In free flight the mast joint has no Rapier motor (Rapier's velocity motor
+  holds rpm with any torque — the first free runs flew on up to 250 kW with a 97.7 kW engine). A governor holds 104 % rpm with
+  torque up to available power / Ω (minus transmission losses); the tail rotor is driven from the same shaft. When the demand is
+  higher, the rotor rpm droops; in a pull-up it rises above 104 % — the engine cannot brake it.
+- **A pilot autopilot** (`src/core/helipilot.ts`): collective holds vertical speed, cyclic holds attitude with rate damping,
+  attitude is set by speed and drift, pedals hold heading or zero sideslip.
+
+Free flight against the held "tunnel" trim (which matched Robinson's power data earlier): 60 kt — 42–46 kW vs. 44.8, collective
+11.3–11.6° vs. 11.45°; 90 kt — about 77 kW vs. 73.6, collective 12.9–13.9° vs. 13.3°.
+
+### The series
+
+The helicopter takes off, hovers, accelerates, and is moved to 600 m. Criteria where the rules or the POH give one; the rest
+are measurements. Blade strength in forward flight stays for reference only (see "R22 in forward flight": equivalent spar, hub
+suspension not published — the root margin is below 1 already in level flight at 90 kt), so blades do not break in this programme
+and the verdict is not based on it.
+
+| Test (rule) | What is done | R22, model |
+| --- | --- | --- |
+| Hover out of ground effect | 600 m, 1370 lb | ✅ 72.4 kW of 97.7; 43 % pedal travel left |
+| Cyclic pull-up at 0.6 / 0.9 VNE (§27.337) | aft cyclic to +3.5 g, collective fixed | 2.2 / 3.2 g — the rotor stalls first (the R22 design limit is not published); rpm rises to 104 % |
+| Low-G pushover (prohibited on the R22) | forward cyclic to 0.2 g, lateral cyclic and pedals fixed | rolls **right** at 22 °/s — as the POH and SN-11 warn |
+| 30 ft/s vertical gust (§27.341) | hover / 0.6 VNE / VNE, controls fixed through the gust | 1.29 / 1.74 / 1.91 g |
+| Full pedal in 0.2 s (§27.351) | hover / 0.6 VNE | 166 °/s; 81° sideslip at 61 kt (the rule allows up to 90°) |
+| Engine failure at 0.9 VNE (§27.143(e)) | controls fixed 1 s, then autorotation at 65 kt | ✅ 83 % rpm after 1 s, steady 96–104 % (POH: 90–110 %); 1340 ft/min (SN-38: usually below 1500) |
+| 1.1 VNE (§27.175, AC 27-1) | 112 kt | ✅ 40 % forward cyclic left; not enough power for level flight — flown at −4 m/s at full power, rpm 100 %, 7.5 % of blade sections stalled, advancing tip M 0.78. Held level instead, the collective "eats" the rpm (down to 91 %, below the 97 % low-rpm horn) and retreating-blade stall grows to a third of the disc |
+
+### Limitations
+
+- The engine failure is the last test: the programme ends in autorotation.
+- No vortex ring and no ground contact on the skids, so the vortex ring and dynamic rollover tests are not in the series.
+- The governor is ideal (no lag, no throttle correlator); the engine power does not depend on rpm. A low-rpm test (raising the collective with the throttle fixed) is not in the series.
+- The flapping hinges are at the hub centre. The real R22 has a teetering hinge plus coning hinges slightly off the axis (offset
+  not published). With the hinge at the centre, the blade root 0.45 m out carries the hinge shear × 0.45 m in bending — the hover
+  blade margin is now 3.3 (it was 6.4 with the old flapping equation, which passed a moment "through" the hinge).
+- The R22 load factor limit, transient rpm minimum and teeter stop angle are not published — reported as measured, without a
+  pass/fail.
+- The main-rotor wake on the stabiliser and fins is not modelled.
+- Validation: 5 checks against what a certified R22 does (hover OGE at max weight, autorotation rpm and sink rate, right roll
+  in low G, forward cyclic left at 1.1 VNE) — all pass.
+
+## Stress tests to FAR 23 — and what they exposed in the physics (2026-11-24)
+
+```bash
+VALIDATE_ONLY=stress npm run physics -- --validate          # the stress programme on the Cessna 172S vs. POH and the rules (~7 min)
+VALIDATE_ONLY=sixdof,cessna npm run physics -- --validate   # roll on full aileron, POH tables — re-checked after the aerodynamics changes
+npm run check   # see the R22 section above for the latest full run (505 checks); the run before the helicopter work: 500 checks — 384 pass, 115 "DIVERGENCE", 1 failure ("influence calculation within 60 s": 64.5 s with the CPU busy, 37.8 s alone)
+```
+
+### The programme
+
+New programme **"Stress tests (FAR 23)"** for fixed-wing aircraft (`stress` in `src/core/programs.ts`). Sources for the list and
+the criteria are in `data/stress-tests.md`. The aircraft takes off, then flies a series of certification manoeuvres at 1500 m.
+Each manoeuvre has a target from the rules, a measurement and a pass/fail. The strength criterion everywhere is a safety
+margin of at least 1.5 at the limit load (§23.303, §23.305). In the browser, setup and recovery between manoeuvres are
+fast-forwarded; take-off and the manoeuvres themselves play in real time.
+
+| Test (rule) | What is done | Cessna 172S, model |
+| --- | --- | --- |
+| +3.8 g at VA (§23.333, §23.337) | entry at 1.05·VA = 108 kt, pull to the limit, 1 s | 3.55 g at 107 kt — the wing stalls first (that is what VA means); margin 1.92 |
+| +3.8 g at VC = 33·√(W/S) = 127 kt | pull, 1 s | 3.79 g, margin 1.84 |
+| −1.52 g at VC (§23.337(b)) | push, 1 s | −1.67 g (the autopilot overshoots by 10 %), margin 3.93 |
+| ±50 ft/s gusts at VC (§23.333(c), §23.341) | 1 − cos gust over 25 chords, frozen in the air; elevator fixed | **3.82 / −1.90 g; the rule's formula gives 3.83 / −1.83**; margin 1.80. With a gust applied to the whole aircraft at once it was 3.34 / −1.25 |
+| Checked pitch manoeuvre at VA (§23.423) | full aft stick to the limit, then forward | 3.31 / −0.63 g, margin 2.09 |
+| Rolling pull-out (§23.349, §23.455) | from a 60° turn at 2/3 of the limit g, full aileron to roll out | 82 °/s, margin 2.78 |
+| Full rudder at VA (§23.351) | step to the peak sideslip, then neutral | 13.2°, margin 6.85 |
+| Dive to VD = 1.4·VC = 178 kt (§23.251, §23.33) | full throttle, rpm held at the red line; 1 s at VD; pull-out | 175 kt; windmilling 2940 rpm with the throttle closed (110 % = 2970 allowed); flutter far away |
+| Wings-level stall (§23.201) | 1 kt/s, power off, controls fixed for 1 s at the break | **52 kt (POH: 53 KCAS)**; bank 5°; 55 m lost (POH: up to 230 ft = 70 m) |
+| Turning stall, 30° (§23.203) | 1 kt/s | **54.5 kt (POH: 57 KCAS)**; bank −24…+36° (allowed 60/30) |
+| Accelerated turning stall (§23.203) | 4 kt/s with rising g | 62.5 kt; bank −24…+43° |
+| One-turn spin (§23.221) | full aft stick and rudder at the break | **not reproduced**: the model settles into a spiral (see limitations) |
+
+### What the tests found in the physics
+
+The first runs gave margins that jumped by ±30 % from one sample to the next and a roll rate twice the real one. The cause
+was in the physics, not in the tests:
+
+1. **Wing bending had no air damping in free flight.** The aerodynamic damping of the first bending mode was computed from the
+   wind-tunnel flow, which is zero when the aircraft flies freely. So the wing rang at 3 % damping after every control input.
+   Now damping follows the current airspeed: about 10–15 % for the Cessna wing in flight (`sim.ts`, `elasticInfo` and the load
+   step).
+2. **In-plane wing bending went through the narrow spar only.** When the wing has a torsion box, in-plane bending is now carried
+   by the whole box: spar, upper and lower skins, rear web (`section.ts`). Stiffness is 17× higher, the spurious 4 Hz in-plane
+   ringing is gone, and the margin in the checked manoeuvre went from 1.41 to over 1.9.
+3. **One uniform induced angle per wing half → a lifting line.** Each strip of the main wings is now a horseshoe vortex.
+   Induced angles come from Biot–Savart over all strips of both halves, solved each step by a Newton step (plain iteration
+   diverges on the saw-tooth mode). Before, lift did not fall off at the tip and antisymmetric loading (ailerons, roll rate) was
+   barely damped by downwash. Flapping wings keep the previous model: their wake is unsteady, and a quasi-steady lifting line
+   made the Snowbird check worse (thrust margin 0.54 → 0.40 against a measured 0.92). The "straight wing in a tunnel" check
+   used a single half-wing and the full-wing formula: the old model silently assumed the missing half. It is now a full
+   rectangular wing of aspect ratio 10, compared with an independent method — Glauert's Fourier-series solution of the
+   lifting line: lift +2.2 %, induced drag within 0.4 %.
+4. **Control surfaces followed thin-airfoil theory at any deflection.** With `control.chordFrac` (c_f/c) set, two DATCOM
+   corrections are added (sec. 6.1.1.1, digitised in Roskam Part VI): the viscous one (a real surface is weaker than theory)
+   and the nonlinear K'(δ) for large deflections. The method reproduces NACA TR 661 (23012, 0.2c flap) to ±0.03 in Δc_l up to
+   20°. Set for the Cessna aileron, elevator and rudder.
+5. **The gust hit the whole aircraft at once.** It was a uniform vertical wind, so the tail felt it together with the wing.
+   Now a gust is frozen in the air (`sim.gustAt`): the aircraft flies through it, and every strip of the wing and the tail sees
+   it at its own position — the tail l_t/V later. That is how the rules' gust alleviation factor is derived.
+6. **Crew vibration in the stress programme.** The vibration measure (ISO 2631, RMS over 2 s) is meant for sustained shaking;
+   gusts and abrupt controls are one-off jolts, already assessed by the g-load by axis and the Brinkley impact model. In this
+   programme vibration is measured only in steady flight between manoeuvres (a note in the report says so). The recovery
+   after each manoeuvre now starts with a smooth 1.5 s unload — the autopilot used to push from 3.7 g to 0.2 g in about a second.
+
+| Quantity | Before | After | Reference |
+| --- | --- | --- | --- |
+| Aileron power C_lδa, 1/rad | 0.48 | 0.30 | JSBSim 0.23, UIUC 0.18 (calculations) |
+| Roll damping C_lp | −0.62 | −0.48 | JSBSim −0.47 |
+| pb/2V on full aileron, 104 kt | 0.24 | 0.18 | Cessna 177B in flight 0.09 (NASA CR-2337) — **divergence** |
+| Cruise power vs. POH table, mean | −6.6 % | −2.8 % | POH fig. 5-8 |
+| Rate of climb, 0 / 8000 ft | +15 / +16 % | +10 / +5 % | POH fig. 5-7 |
+| Stall, flaps up | −0.4 % | +0.4 % | POH 53 KCAS |
+| POH section of the checks (24) | 16 pass, 8 divergences | 14 pass, 10 divergences | climb at 8000 ft now passes; top speed at 8000 ft (−4.3 %, limited by the 2700 rpm of the "light" propeller) and three cruise rpm rows went just over tolerance |
+
+### Why it diverges
+
+- **Roll rate**: still twice the Cessna 177B in flight. That is a different aircraft (cantilever wing, its own ailerons). In the
+  test the pedals were held, so adverse yaw built 8–11° of sideslip, which slows the roll through dihedral effect. The model has
+  no aileron hinge gaps and almost no adverse yaw. The calculated C172 models give 0.12–0.15.
+- **Propeller rpm** in cruise is 2–4 % high (the known "light propeller", see the propeller section). With the lower drag of
+  the lifting line it shows up in more rows: 3 of the cruise rpm checks went just over their 2 % tolerance.
+- **The 30° turning stall** is 4.4 % below the POH: the programme detects the stall by the share of stalled strips (30 %), the
+  certification test by the nose drop or the stick reaching its stop.
+
+### Limitations
+
+- **The spin is not reproduced.** With full aft stick and rudder the model sits at α ≈ 14° in a spiral. Autorotation needs
+  rotary-balance data for the wing beyond the stall, which strip theory does not have. The step is reported as "not tested".
+- **Strength margins belong to the equivalent cantilever spar** (its wall is an estimate; the strut is not in the strength
+  calculation). They are not a check of the real airframe.
+- The autopilot is a test pilot with limits: at VA the wing stalls at 3.55 g before reaching 3.8 g, and −1.52 g overshoots to
+  −1.67 g. Both are shown as measured.
+- The helicopter series is described in the next section up (R22 in free flight).
+
 ## Human: power vs. duration, g-loads by axis and time (2026-11-23)
 
 ```bash
@@ -157,7 +323,7 @@ Info:
   - the hub suspension below the hinge, which on the R22 absorbs Coriolis forces, is not published and is not in the model.
 
   There are no blade load measurements, so there is nothing to fit.
-- There is no fuselage trim in pitch and roll, and no free flight of the helicopter in all degrees of freedom: fuselage angular rates do not enter the flapping equation.
+- There is no fuselage trim in pitch and roll, and no free flight of the helicopter in all degrees of freedom: fuselage angular rates do not enter the flapping equation. (Done on 2026-11-24 — see "R22 in free flight" at the top.)
 - Inflow through the disk is computed by annuli. There is no inflow skew across the disk in forward flight: the lateral flapping it causes is not reproduced.
 - There is no forward-flight program for the helicopter on the page yet — only the checks.
 

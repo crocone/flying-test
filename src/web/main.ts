@@ -844,7 +844,10 @@ function updatePanel() {
     if (!run.done && a.kind !== 'breaks' && a.kind !== 'crew') {
       v.className = 'badge';
       v.append(el('b', tr('Идёт испытание', 'Test in progress')), listOf([run.fastForward
-        ? (run.id === 'free'
+        ? (run.id === 'stress'
+          ? tr('Самолёт выходит на режим следующего манёвра или возвращается в горизонт — эта часть идёт ускоренно. Сами манёвры — в замедлении; результаты по каждому — в отчёте.',
+            'The aeroplane is setting up the next manoeuvre or recovering to level flight — this part runs fast-forward. The manoeuvres themselves play in slow motion; results for each are in the report.')
+          : run.id === 'free'
           ? tr('Автопилот подбирает режим полёта в потоке — угол установки и закручивание крыла. Эта часть идёт ускоренно; потом корпус отпускается, и аппарат летит сам — уже в замедлении.',
             'The autopilot is searching for the flight regime in a flow — wing incidence and twist. This part runs fast-forward; then the body is released and the vehicle flies by itself — in slow motion.')
           : tr('Автопилот трубы подбирает режим полёта — угол установки и закручивание крыла — и измеряет его. Эта часть идёт ускоренно; потом найденный режим показывается в замедлении.',

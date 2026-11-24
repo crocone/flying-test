@@ -144,6 +144,56 @@ function tableCoeffs(af: Airfoil, alpha: number, mach: number, re: number): Sect
   };
 }
 
+// ---------- Простой закрылок (руль, элерон): поправки DATCOM к теории тонкого профиля ----------
+// Источник цифр — оцифровка графиков Roskam, Airplane Design, Part VI, рис. 8.13–8.15 (копии DATCOM, рис. 6.1.1.1-39 и -40),
+// файлы FAST-GA (k_plain_flap.csv, k_cl_delta_plain_flap.csv). Сверка: продувка NACA TR 661 (NACA 23012, закрылок 0,2c)
+// даёт Δcl 0,44 / 0,78 / 0,94 / 1,21 на 10 / 20 / 30 / 45°, метод — 0,43 / 0,76 / 0,87 / 1,11.
+
+/** Эффективность τ по теории тонкого профиля: τ = 1 − (θf − sin θf)/π, θf = arccos(2·c_f/c − 1). */
+export function flapTau(cf: number): number {
+  const t = Math.acos(2 * Math.min(Math.max(cf, 0.01), 0.99) - 1);
+  return 1 - (t - Math.sin(t)) / Math.PI;
+}
+
+const lerp1 = (xs: number[], ys: number[], x: number) => {
+  if (x <= xs[0]) return ys[0];
+  for (let i = 1; i < xs.length; i++) if (x <= xs[i]) return ys[i - 1] + ((ys[i] - ys[i - 1]) * (x - xs[i - 1])) / (xs[i] - xs[i - 1]);
+  return ys[ys.length - 1];
+};
+const KP_CF = [0.1, 0.2, 0.3, 0.4];
+const KP_D = [0, 10, 15, 20, 25, 30, 40, 50, 60];
+const KP = [
+  [1, 1.0, 0.98, 0.9, 0.79, 0.71, 0.64, 0.6, 0.56],
+  [1, 1.0, 0.98, 0.87, 0.73, 0.67, 0.59, 0.54, 0.51],
+  [1, 1.0, 0.98, 0.8, 0.66, 0.61, 0.54, 0.5, 0.46],
+  [1, 1.0, 0.94, 0.75, 0.63, 0.58, 0.51, 0.47, 0.44],
+];
+/** Нелинейная поправка K'(δ): во сколько раз прирост c_l на угле δ (град) меньше линейного (DATCOM, рис. 6.1.1.1-40). */
+export function flapKPrime(cf: number, deltaDeg: number): number {
+  const ks = KP.map((row) => lerp1(KP_D, row, Math.min(deltaDeg, 60)));
+  return lerp1(KP_CF, ks, cf);
+}
+const ETA_R = [0.83, 0.9, 0.95];
+const ETA_CF = [0.15, 0.2, 0.3, 0.4];
+const ETA = [
+  [0.67, 0.8, 0.9],
+  [0.68, 0.81, 0.9],
+  [0.72, 0.83, 0.91],
+  [0.75, 0.85, 0.93],
+];
+/**
+ * Вязкая поправка: (c_lδ)/(c_lδ)теор по DATCOM (рис. 6.1.1.1-39) зависит от того, насколько наклон c_lα профиля меньше
+ * теоретического 2π·(1 + 0,77·t/c). В модели прирост уже считается с наклоном профиля c_lα, поэтому множитель —
+ * (c_lδ/c_lδ,теор)·c_lα,теор/c_lα.
+ */
+export function flapViscous(cf: number, af: Airfoil): number {
+  const claTh = 2 * Math.PI * (1 + 0.77 * af.thickness);
+  const cla = af.clAlpha ?? claTh;
+  const r = Math.min(Math.max(cla / claTh, ETA_R[0]), ETA_R[2]);
+  const e = lerp1(ETA_CF, ETA.map((row) => lerp1(ETA_R, row, r)), cf);
+  return Math.min(1, (e * claTh) / cla);
+}
+
 export function airfoilCoeffs(af: Airfoil, alphaIn: number, mach: number, re?: number): SectionCoeffs {
   if (af.polar && re && re > 0) return tableCoeffs(af, wrap(alphaIn), mach, re);
   const alpha = wrap(alphaIn);

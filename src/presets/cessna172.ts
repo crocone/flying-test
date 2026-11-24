@@ -20,13 +20,15 @@ const tau = (cf: number) => {
 };
 // Элероны: 18,3 ft² на оба (Jane's), размах от 2,10 до 5,41 м от оси — хорда 0,257 м, c_f/c ≈ 0,185 (по средней хорде
 // участка) → τ = 0,53. Отклонения (сертификат типа): вверх 20°, вниз 15° — дифференциальные, канал — угол поднятого элерона.
-const TAU_A = tau(0.185);
+const CF_A = 0.185;
+const TAU_A = tau(CF_A);
 // Руль высоты: 14,53 ft² из 36,09 ft² горизонтального оперения (Jane's), c_f/c ≈ 0,40 → τ = 0,75. Вверх 28°, вниз 23°.
 const TAU_E = tau(14.53 / 36.09);
 // Руль направления: 7,43 ft² из 18,67 ft² (киль 11,24 + руль, Jane's) → τ = 0,75. По 16° в каждую сторону (параллельно
 // строительной горизонтали, сертификат типа).
 const TAU_R = tau(7.43 / 18.67);
-// Линейная теория: при больших отклонениях настоящий руль слабее (поток срывается с отклонённой части) — в модели нет.
+// Линейная теория — только основа: по chordFrac стенд добавляет поправки DATCOM — вязкую (настоящий руль слабее теории) и
+// нелинейную на больших отклонениях (поток срывается с отклонённой части), src/core/aero.ts.
 
 const naca2412 = { name: 'NACA 2412', cl0: 0.23, clAlpha: 5.9, clMax: 1.55, cd0: 0.0075, k: 0.006, thickness: 0.12 };
 const naca0009 = { name: 'NACA 0009', cl0: 0, clAlpha: 5.7, clMax: 1.1, cd0: 0.008, k: 0.008, thickness: 0.09 };
@@ -44,22 +46,22 @@ const wing = (side: 1 | -1): AeroSurface => ({
   side, span: WING_SPAN, rootChord: 1.626, tipChord: 1.13, planform: [[0, 1.626], [BREAK, 1.626], [1, 1.13]],
   incidenceDeg: 1.5, twistDeg: -3, dihedralDeg: 1.73, airfoil: naca2412, sections: 16, induced: 'wing', aspectRatio: 7.47, role: 'main',
   control: side === 1
-    ? { channel: 'roll', deg: -TAU_A, degNeg: -TAU_A * 0.75, from: BREAK, to: (5.41 - WING_ROOT_Z) / WING_SPAN }
-    : { channel: 'roll', deg: TAU_A * 0.75, degNeg: TAU_A, from: BREAK, to: (5.41 - WING_ROOT_Z) / WING_SPAN },
+    ? { channel: 'roll', deg: -TAU_A, degNeg: -TAU_A * 0.75, from: BREAK, to: (5.41 - WING_ROOT_Z) / WING_SPAN, chordFrac: CF_A }
+    : { channel: 'roll', deg: TAU_A * 0.75, degNeg: TAU_A, from: BREAK, to: (5.41 - WING_ROOT_Z) / WING_SPAN, chordFrac: CF_A },
 });
 // Горизонтальное оперение: размах 3,45 м (11 ft 4 in), площадь 3,353 м² (21,56 + 14,53 ft², Jane's); хорды 1,2 и 0,8 м
 // (оценка по чертежу, сходится с площадью); установка −3° (у Cessna 182 того же семейства, NASA CR-1975, рис. 82a).
 // Плечо от фокуса крыла 4,79 м (JSBSim c172p: 15,7 ft).
 const tail = (side: 1 | -1): AeroSurface => ({
   side, span: 1.675, rootChord: 1.2, tipChord: 0.8, incidenceDeg: -3, airfoil: naca0009,
-  sections: 8, induced: 'wing', aspectRatio: 3.45 ** 2 / 3.353, role: 'tail', control: { channel: 'pitch', deg: -TAU_E },
+  sections: 8, induced: 'wing', aspectRatio: 3.45 ** 2 / 3.353, role: 'tail', control: { channel: 'pitch', deg: -TAU_E, chordFrac: 14.53 / 36.09 },
 });
 // Киль с рулём: 1,734 м² (18,67 ft²); высота над хвостовой частью фюзеляжа 1,27 м (общая высота самолёта 2,72 м); хорды
 // 1,85 и 0,88 м (сходится с площадью), стреловидность по четвертям хорд 28° (оценка по чертежу). Фюзеляж и стабилизатор
 // у корня работают как стенка (зеркало): удлинение 2·b²/S = 1,86 — верхняя оценка, допущение.
 const fin: AeroSurface = {
   side: 1, span: 1.27, rootChord: 1.85, tipChord: 0.88, sweepDeg: 28, incidenceDeg: 0, airfoil: naca0009,
-  sections: 8, induced: 'wing', aspectRatio: (2 * 1.27 ** 2) / 1.734, role: 'tail', control: { channel: 'yaw', deg: TAU_R },
+  sections: 8, induced: 'wing', aspectRatio: (2 * 1.27 ** 2) / 1.734, role: 'tail', control: { channel: 'yaw', deg: TAU_R, chordFrac: 7.43 / 18.67 },
 };
 
 // Винт McCauley 1A170E/JHA7660: две лопасти, фиксированный шаг, D = 76 in (POH, стр. 1-4), шаг 60 in — по обозначению

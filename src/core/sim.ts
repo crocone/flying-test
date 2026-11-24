@@ -13,12 +13,12 @@ import type { Spec, Part, Joint, Actuator, AeroSurface } from './spec.ts';
 import { chordAtFrac, surfaceArea, validateSpec } from './spec.ts';
 import { MATERIALS, type Material } from './materials.ts';
 import { sectionAt, type SectionProps } from './section.ts';
-import { tailRotorPower } from './tailrotor.ts';
+import { bemtStep, tailRotorPower } from './tailrotor.ts';
 import { laminateMaterial } from './laminate.ts';
 import { flutterAnalysis, type FlutterResult, type Strip, type Supports } from './aeroelastic.ts';
 import { airViscosity } from './aero.ts';
 import { availablePower, fuelFlow } from './engine.ts';
-import { airfoilCoeffs, atmosphere, dynamicStall, rotorGroundFactor, rotorInflow, theodorsen, wagnerStep, wingGroundFactor, type StallState } from './aero.ts';
+import { airfoilCoeffs, atmosphere, dynamicStall, flapKPrime, flapTau, flapViscous, rotorGroundFactor, rotorInflow, theodorsen, wagnerStep, wingGroundFactor, type StallState } from './aero.ts';
 import { propellerLoads } from './propeller.ts';
 import { stationStress, fatigueCycles, type StationStress, type FailureMode } from './strength.ts';
 import {
@@ -59,6 +59,9 @@ export interface Element {
   incPrev: number; // угол установки на прошлом шаге
   wnPrev: number; // нормальная к хорде скорость воздуха на прошлом шаге
   stall: StallState; // запаздывание срыва
+  // Несущая линия (у несущих крыльев): индуктивный угол этого сечения и циркуляция на прошлом шаге.
+  ai: number;
+  gam: number;
 }
 
 export interface StationState extends StationStress {
@@ -148,6 +151,11 @@ export interface ElasticInfo {
   // Изгиб в плоскости крыла (вращения) — своя форма: жёсткость EI_lag, без присоединённой массы,
   // у лопасти центробежное упрочнение слабее (коэффициент Саутвелла на единицу меньше), демпфирование 0,03.
   fLag: number;
+  // У неподвижного крыла демпфирование воздухом пропорционально скорости потока; в свободном полёте она меняется —
+  // в шаге нагрузок ζ пересчитывается по текущей воздушной скорости: ζ = 0,03 + cAU·U·F(k)/(2·m·ω₁).
+  cAU?: number; // демпфирование формы на единицу скорости, Н·с/м на м/с
+  mModal?: number; // модальная масса с присоединённой, кг
+  chord?: number; // средняя хорда, м
 }
 
 /** Первая форма изгиба консоли: φ(ξ) = ch βξ − cos βξ − σ·(sh βξ − sin βξ), β = 1,8751, σ = 0,7341; φ(1) = 2. */
@@ -429,7 +437,7 @@ export class Sim {
           r: at(rMid), chord: c, dr: dl, mass: m, twist: ((a.twistDeg ?? 0) * deg * rMid) / a.span,
           spanFrac: rMid / a.span, innerR: at(rIn), section: sec,
           vnPrev: NaN, dF: v3(), fLoc: v3(), dFm: v3(), pW: v3(), pR: v3(), alpha: 0, stalled: false, mach: 0,
-          wag: { x: 0, y: 0 }, aQPrev: NaN, incPrev: NaN, wnPrev: NaN, stall: { aF: NaN, w: 1, tauV: NaN, cv: NaN, cnV: 0 },
+          wag: { x: 0, y: 0 }, aQPrev: NaN, incPrev: NaN, wnPrev: NaN, stall: { aF: NaN, w: 1, tauV: NaN, cv: NaN, cnV: 0 }, ai: 0, gam: 0,
         });
       }
       const target = p.mass ?? sum;
@@ -651,13 +659,14 @@ export class Sim {
     const hubOff = p.rotor ? len(sub(fromArr(p.spec.position), fromArr(p.rotor.hub.spec.position))) : 0;
     const flow = len(this.opts.wind);
     const cla = a.airfoil.clAlpha ?? 2 * Math.PI * 0.9;
-    let mS = 0, mA = 0, cA = 0, chord = 0;
+    let mS = 0, mA = 0, cA = 0, chord = 0, cAU1 = 0;
     for (const e of p.elements) {
       const phi2 = cantileverMode(e.spanFrac) ** 2;
       mS += e.mass * phi2;
       mA += ((air * Math.PI * e.chord * e.chord) / 4) * e.dr * phi2;
       const U = p.rotor ? omegaRotor * (hubOff + e.spanFrac * a.span) : flow;
       cA += 0.5 * air * cla * e.chord * U * e.dr * phi2;
+      cAU1 += 0.5 * air * cla * e.chord * e.dr * phi2;
       chord += e.chord / p.elements.length;
     }
     const massRatio = mS > 0 ? mS / (mS + mA) : 1;
@@ -674,10 +683,11 @@ export class Sim {
     const zeta = Math.min(1, STRUCTURAL_DAMPING + zetaAir);
     let fLag = f1Struct * Math.sqrt(mid.iLag / mid.iFlap);
     if (p.rotor) fLag = Math.sqrt(fLag * fLag + 0.17 * (p.rotor.actuator.rpm / 60) ** 2);
-    if (!fe) return { f1, fe: 0, ratio: 0, daf: 1, zeta, zetaAir, fLag };
+    const air1 = p.rotor ? undefined : { cAU: cAU1, mModal: mS + mA, chord };
+    if (!fe) return { f1, fe: 0, ratio: 0, daf: 1, zeta, zetaAir, fLag, ...air1 };
     const r = fe / f1;
     const daf = r < 1 ? Math.max(1, 1 / Math.sqrt((1 - r * r) ** 2 + (2 * zeta * r) ** 2)) : 1;
-    return { f1, fe, ratio: r, daf, zeta, zetaAir, fLag };
+    return { f1, fe, ratio: r, daf, zeta, zetaAir, fLag, ...air1 };
   }
 
   /**
@@ -816,6 +826,162 @@ export class Sim {
       addTo(out, scale(sub(c, scale(rh, 2 * dot(c, rh))), (R * R) / Math.max(r, R) ** 2));
     }
     return out;
+  }
+
+  /**
+   * Несущая линия Прандтля для всех несущих крыльев вместе (обе консоли, тандем, биплан): каждое сечение — подковообразный
+   * вихрь (присоединённый по линии четвертей хорд на ширине сечения, два свободных — по потоку), циркуляция — из подъёмной
+   * силы сечения на этом шаге. Индуктивная скорость в середине каждого сечения — по Био — Савару от всех подков,
+   * индуктивный угол — её проекция на нормаль сечения. Простые итерации здесь расходятся (пилообразная мода соседних
+   * сечений), поэтому каждый шаг — шаг Ньютона: система (I + V·A·D)·Δ = A·Γ − αi решается целиком (D = ½·c·c_lα, у
+   * сорванного сечения наклон берётся нулевым).
+   *
+   * Раньше индуктивный угол был один на консоль: C_L консоли / (π·e·λ). Так подъёмная сила у законцовки не падала, а
+   * антисимметричная нагрузка (элероны, вращение по крену) почти не гасилась скосом: эффективность элеронов была вдвое
+   * больше расчётной (C_lδa ≈ 0,48 против 0,18–0,23 у моделей C172), угловая скорость крена — в 2,6 раза больше измеренной
+   * у Cessna 177B (pb/2V ≈ 0,24 против 0,09, NASA CR-2337). Влияние земли — как раньше, множителем к скосу.
+   * Если потока почти нет (стенд без ветра), остаётся прежняя модель: без потока следа нет. Машущие крылья — тоже прежняя.
+   */
+  private llOn = false;
+  /**
+   * Порыв, «вмороженный» в воздух: добавка к ветру в точке мира (м/с). Задан — каждое сечение крыла и оперения видит порыв
+   * в своём месте: самолёт входит в порыв носом, оперение — позже на плечо/V (так порыв проходят на самом деле и так
+   * выведен коэффициент ослабления порыва в нормах). null — порыва нет.
+   */
+  gustAt: ((p: V3) => V3) | null = null;
+  /**
+   * Хвостовой винт как сила (свободный полёт вертолёта): тяга — BEMT при шаге от педалей (tailRotor.channel), приложена
+   * в центре хвостового винта поперёк балки. Выключено (по умолчанию) — прежняя модель для программ с закреплённым по
+   * рысканию корпусом: тяга = реактивный момент / плечо, только мощность.
+   */
+  tailRotorFree = false;
+  private govI = 0;
+  private enginePower = 0;
+  private rotorInertia(r: RotorModel): number {
+    const mastW = norm(rotate(r.hub.parent!.b.rb.rotation(), r.hub.joint!.axisParentBody));
+    let I = 0;
+    for (const b of [r.hub, ...r.blades]) {
+      const { t } = this.pose(b);
+      for (const e of b.elements) {
+        const d = sub(add(t, rotate(this.pose(b).q, e.r)), this.pose(r.hub).t);
+        const dp = sub(d, scale(mastW, dot(d, mastW)));
+        I += e.mass * dot(dp, dp);
+      }
+    }
+    return Math.max(I, 1);
+  }
+  private tailVi = new Map<string, number[]>();
+  private hubWPrev = new Map<RotorModel, V3>();
+  private liftingLine(wind: V3) {
+    const vRoot = this.pointVel(this.root.b, copy(this.root.b.rb.translation()));
+    const vInf = sub(wind, vRoot);
+    const V = len(vInf);
+    // Машущие крылья (нестационарная аэродинамика) — по-прежнему: их след нестационарный, квазистационарная несущая
+    // линия для них неверна (на Snowbird запас тяги упал бы с 0,54 до 0,40 при измеренных 0,92).
+    const parts = this.parts.filter((p) => this.isMainWing(p) && !p.flap && !p.spec.aero!.unsteady);
+    this.llOn = V > 2 && parts.length > 0;
+    if (!this.llOn) return;
+    const d = scale(vInf, 1 / V); // куда сносится след
+    type S = { e: Element; A: V3; B: V3; P: V3; n: V3; g: number; ka: number; gf: number; V: number };
+    const S: S[] = [];
+    for (const p of parts) {
+      const { t: tP, q } = this.pose(p);
+      const eN = rotate(q, p.axes.n);
+      const eS = rotate(q, p.axes.s);
+      const cla = p.spec.aero!.airfoil.clAlpha ?? 2 * Math.PI * 0.9;
+      for (const e of p.elements) {
+        const P = add(tP, rotate(q, e.r));
+        // Направление присоединённого вихря — такое, чтобы положительная циркуляция давала подъёмную силу по нормали.
+        const sgn = dot(cross(vInf, eS), eN) >= 0 ? 1 : -1;
+        const h = scale(eS, (sgn * e.dr) / 2);
+        const Vs = Math.max(1, len(sub(sub(wind, this.pointVel(p.b, P)), scale(eS, dot(sub(wind, this.pointVel(p.b, P)), eS)))));
+        S.push({ e, A: sub(P, h), B: add(P, h), P, n: eN, g: e.gam, ka: e.stalled ? 0 : 0.5 * e.chord * cla, gf: p.groundFactor, V: Vs });
+      }
+    }
+    const core2 = 1e-4; // ядро вихря (1 см), чтобы не было деления на ноль на самом вихре
+    // Скорость от отрезка X1→X2 и от полубесконечного вихря из X вдоль d (на единицу циркуляции).
+    const seg = (Pt: V3, X1: V3, X2: V3) => {
+      const r1 = sub(Pt, X1), r2 = sub(Pt, X2), r0 = sub(X2, X1);
+      const c = cross(r1, r2);
+      const c2 = dot(c, c) + core2 * dot(r0, r0);
+      const l1 = len(r1), l2 = len(r2);
+      if (l1 < 1e-9 || l2 < 1e-9) return v3();
+      return scale(c, dot(r0, sub(scale(r1, 1 / l1), scale(r2, 1 / l2))) / (4 * Math.PI * c2));
+    };
+    const semi = (Pt: V3, X: V3) => {
+      const r = sub(Pt, X);
+      const c = cross(d, r);
+      const lr = len(r);
+      if (lr < 1e-9) return v3();
+      return scale(c, (1 + dot(r, d) / lr) / (4 * Math.PI * (dot(c, c) + core2)));
+    };
+    const horse = (Pt: V3, s: S) => add(sub(seg(Pt, s.A, s.B), semi(Pt, s.A)), semi(Pt, s.B));
+    const N = S.length;
+    // A[j][i] — индуктивный угол в сечении j от единичной циркуляции сечения i.
+    const M: number[][] = [];
+    const rhs: number[] = [];
+    for (let j = 0; j < N; j++) {
+      const sj = S[j];
+      const row = new Array<number>(N + 1);
+      let target = 0;
+      for (let i = 0; i < N; i++) {
+        const Aji = (-dot(horse(sj.P, S[i]), sj.n) / sj.V) * sj.gf;
+        target += Aji * S[i].g;
+        // dΓi/dαi = −V_i·D_i: рост индуктивного угла уменьшает циркуляцию.
+        row[i] = Aji * S[i].V * S[i].ka + (i === j ? 1 : 0);
+      }
+      row[N] = target - sj.e.ai;
+      M.push(row);
+      rhs.push(target);
+    }
+    // Гаусс с выбором ведущего элемента.
+    for (let c = 0; c < N; c++) {
+      let piv = c;
+      for (let r = c + 1; r < N; r++) if (Math.abs(M[r][c]) > Math.abs(M[piv][c])) piv = r;
+      [M[c], M[piv]] = [M[piv], M[c]];
+      const m = M[c][c];
+      if (Math.abs(m) < 1e-12) return;
+      for (let r = c + 1; r < N; r++) {
+        const f = M[r][c] / m;
+        if (f) for (let k = c; k <= N; k++) M[r][k] -= f * M[c][k];
+      }
+    }
+    const x = new Array<number>(N).fill(0);
+    for (let r = N - 1; r >= 0; r--) {
+      let s = M[r][N];
+      for (let k = r + 1; k < N; k++) s -= M[r][k] * x[k];
+      x[r] = s / M[r][r];
+    }
+    // Шаг Ньютона чуть недорелаксирован: подъёмная сила нелинейна (срыв), а след на самом деле сходит за время.
+    for (let j = 0; j < N; j++) if (Number.isFinite(x[j])) S[j].e.ai += 0.7 * x[j];
+  }
+
+  private applyTailRotors(wind: V3) {
+    for (const a of this.spec.actuators) {
+      if (a.type !== 'spinner' || !a.tailRotor?.channel || !a.tailRotor.at) continue;
+      const tr = a.tailRotor;
+      const rr = this.rotors.find((x) => x.actuator === a);
+      if (!rr || rr.hub.broken) continue;
+      const body = rr.hub.parent!;
+      const { t: tB, q: qB } = this.pose(body);
+      const P = add(tB, rotate(qB, sub(fromArr(tr.at!), fromArr(body.spec.position))));
+      const mastW = scale(norm(rotate(body.b.rb.rotation(), rr.hub.joint!.axisParentBody)), a.direction);
+      const hubT = this.pose(rr.hub).t;
+      let rv = sub(P, hubT);
+      rv = sub(rv, scale(mastW, dot(rv, mastW)));
+      // Тяга — так, чтобы её момент вокруг вала был по вращению винта (против реактивного момента на корпус).
+      const d = norm(cross(mastW, norm(rv)));
+      const Vc = dot(sub(this.pointVel(body.b, P), wind), d);
+      const omNom = a.rpm * RAD_PER_RPM;
+      const om = Math.abs(rr.omega) > 1 ? Math.abs(rr.omega) : omNom;
+      let vi = this.tailVi.get(a.id);
+      if (!vi) this.tailVi.set(a.id, (vi = []));
+      const res = bemtStep(tr, this.channels[tr.channel!] ?? 0, Vc, this.rho, this.soundSpeed, om / omNom, this.mu, vi);
+      const F = scale(d, res.T);
+      body.b.rb.addForceAtPoint(F, P, true);
+      this.noteForce(F, P);
+      this.tailCache.set(a.id, { t: this.t, power: Math.max(0, res.P), thetaDeg: this.channels[tr.channel!] ?? 0, thrust: res.T });
+    }
   }
 
   /** Главные (несущие) крылья — источники скоса потока: крыло с индуктивным скосом, не оперение и не лопасть. */
@@ -1007,8 +1173,10 @@ export class Sim {
         const jm = this.joints.find((j) => j.spec.id === a.joint)!;
         const mult = a.channel ? this.channels[a.channel] ?? 1 : 1;
         const omega = a.direction * a.rpm * RAD_PER_RPM * s * mult;
-        if (a.freewheel && (this.channels[a.freewheel] ?? 0) > 0.5) {
+        if ((a.freewheel && (this.channels[a.freewheel] ?? 0) > 0.5) || (this.tailRotorFree && a.tailRotor)) {
           // Мотор отключён: винт вращается свободно — его обороты задают воздух и инерция.
+          // В свободном полёте вертолёта вал тоже без мотора Rapier: момент двигателя прикладывает applyAero (регулятор
+          // оборотов с пределом мощности), а мотор шарнира Rapier держал бы обороты с любым моментом.
           // Мотор шарнира в Rapier не выключается (при нулевых коэффициентах шарнир становится жёстким), поэтому
           // шарнир вала пересоздаётся без мотора.
           if (jm.rapier && !jm.child.broken && !jm.motorless) this.rebuildRevolute(jm, false);
@@ -1050,7 +1218,12 @@ export class Sim {
     const c = a.control;
     if (!c) return 0;
     const x = this.channels[c.channel] ?? 0;
-    return x * (x < 0 && c.degNeg !== undefined ? c.degNeg : c.deg) * deg;
+    const k = x < 0 && c.degNeg !== undefined ? c.degNeg : c.deg;
+    if (!c.chordFrac) return x * k * deg;
+    // Физический угол отклонения: x·k = δ·τ (так задаётся deg), τ — по теории тонкого профиля.
+    const tau = flapTau(c.chordFrac);
+    const dPhys = Math.abs((x * k) / tau);
+    return x * k * deg * flapViscous(c.chordFrac, a.airfoil) * flapKPrime(c.chordFrac, dPhys);
   }
 
   private applyAero() {
@@ -1182,7 +1355,8 @@ export class Sim {
         const ring = bemt && a.induced !== 'none' ? rot!.st[ei] : undefined;
         const ind = ring ? scale(rot!.axisW, -ring.vi) : indUniform;
         const vSec = tt ? add(this.pointVel(p.b, pw), scale(cross(tt.aW, sub(pw, tt.H)), tt.rate)) : this.pointVel(p.b, pw);
-        let u = sub(add(wind, washed ? add(ind, this.wingWash(pw, wind)) : ind), vSec);
+        const windHere = this.gustAt ? add(wind, this.gustAt(pw)) : wind;
+        let u = sub(add(windHere, washed ? add(ind, this.wingWash(pw, wind)) : ind), vSec);
         if (!rot) u = add(u, this.bodyFlowAt(pw, wind));
         u = sub(u, scale(eZ, dot(u, eZ)));
         const uc = dot(u, eC);
@@ -1195,7 +1369,7 @@ export class Sim {
           const cover = ctl ? Math.max(0, Math.min(cTo, e.spanFrac + halfEl) - Math.max(cFrom, e.spanFrac - halfEl)) / (2 * halfEl) : 0;
           const inc = incRoot + (incTip - incRoot) * e.spanFrac + e.twist + cover * ctl;
           const aGeo = Math.atan2(un, -uc) + inc; // угол между хордой и набегающим потоком
-          const aInd = a.induced === 'wing' ? p.inducedAlpha : 0;
+          const aInd = a.induced === 'wing' ? (this.llOn && this.isMainWing(p) && !a.unsteady ? e.ai : p.inducedAlpha) : 0;
           let alpha = aGeo - aInd;
           let shift = 0; // на сколько эффективный угол отличается от мгновенного
           if (a.unsteady) {
@@ -1228,7 +1402,8 @@ export class Sim {
           const d = v3((uc * eC.x + un * eN.x) / V, (uc * eC.y + un * eN.y) / V, (uc * eC.z + un * eN.z) / V);
           const L = norm(cross(d, eZ));
           // Скос потока за крылом наклоняет подъёмную силу назад — индуктивное сопротивление.
-          const cd = cd0 + (a.induced === 'wing' ? cl * p.inducedAlpha : 0);
+          const cd = cd0 + cl * aInd;
+          e.gam = 0.5 * V * e.chord * cl; // циркуляция сечения (Жуковский: L' = ρ·V·Γ)
           // Подъёмная сила перпендикулярна эффективному потоку. Когда она отстаёт от угла атаки,
           // эффективный поток повёрнут относительно мгновенного на shift — сила наклонена назад,
           // и тяга взмаха меньше, чем в установившемся обтекании (теория Гаррика).
@@ -1281,26 +1456,58 @@ export class Sim {
       if (rot) rot.thrust += dot(p.aeroForce, rot.axisW);
     }
 
+    this.liftingLine(wind);
+    if (this.tailRotorFree) this.applyTailRotors(wind);
     this.recordWake(wind);
 
     // Лопасти на шарнирах взмаха: момент воздуха и тяжести вокруг оси шарнира на втулку не передаётся — он машет лопастью.
     // Iβ·β̈ = M − Iβ·Ω²·(β₀ + β): центробежная сила возвращает лопасть с собственной частотой ровно 1 раз за оборот
     // (шарнир на оси вращения); β₀ — построенная конусность. Лопасти — жёсткие тела Rapier без взмаха: взмах наложен на
     // положение и скорость сечений в аэродинамике и в нагрузках, а момент вокруг шарнира снимается с тела лопасти.
-    // Угловые скорости корпуса в уравнение не входят: программы, где они есть у вертолёта, пока не построены.
+    // В общем виде: Iβ·β̈ = M + M_тяж − Σ m·(d × (ω̇ × d + ω × (ω × d)))·ê, ω — угловая скорость втулки вместе с корпусом,
+    // d — сечение лопасти от центра втулки (с взмахом). При одном вращении винта это прежнее −Iβ·Ω²·(β₀ + β), а с вращением
+    // корпуса появляются гироскопические 2Ω·(p, q) и инерционные (ṗ, q̇) моменты: диск отстаёт от поворота вала — так
+    // несущий винт демпфирует корпус.
     const gW = v3(0, this.opts.gravity ? -this.g : 0, 0);
     for (const r of this.rotors) {
       if (!r.flapping || r.hub.broken || r.blades.some((b) => b.broken)) continue;
+      // Угловая скорость втулки — из «чистых» составляющих: вращение винта вокруг вала плюс вращение корпуса. Угловая
+      // скорость тела втулки в Rapier содержит ещё дрожание шарнира поперёк вала (решатель), а умноженное на Ω оно
+      // раскачивало бы взмах дважды за оборот.
+      const wF = copy(r.hub.parent!.b.rb.angvel());
+      const wH = add(wF, scale(norm(rotate(r.hub.parent!.b.rb.rotation(), r.hub.joint!.axisParentBody)), r.omega));
+      const wPrev = this.hubWPrev.get(r) ?? wF;
+      const wDot = scale(sub(wF, wPrev), 1 / this.dt);
+      this.hubWPrev.set(r, wF);
       for (const b of r.blades) {
         const f = b.flap!;
         const { t: tB, q: qB } = this.pose(b);
         const qf = qAxisAngle(f.aW, f.beta);
-        let Mg = 0;
-        for (const e of b.elements) Mg += dot(cross(rotate(qf, sub(add(tB, rotate(qB, e.r)), f.H)), scale(gW, e.mass)), f.aW);
-        const Mt = scale(f.aW, -(f.M + Mg));
+        // Тяжесть и ускорение втулки: в осях втулки на лопасть действует g − a_втулки (в манёвре с перегрузкой лопасти
+        // поднимаются, как от большей тяжести). На жёсткое тело лопасти тяжесть Rapier прикладывает сам — её момент
+        // вокруг шарнира снимается, как и раньше.
+        const aH = r.hub.b.acc ?? v3();
+        // Инерционные моменты вокруг шарнира — по сечениям, как и нагрузки: a = ω̇ × d + ω × (ω × d) для точки d
+        // (от центра втулки), вынос корня, построенная конусность и повороты корпуса учитываются сами.
+        const inert = (d: V3) => add(cross(wDot, d), cross(wH, cross(wH, d)));
+        let Mg = 0, MgRigid = 0, MiFlap = 0, MiRigid = 0;
+        for (const e of b.elements) {
+          const dR = sub(add(tB, rotate(qB, e.r)), f.H);
+          const dF = rotate(qf, dR);
+          Mg += dot(cross(dF, scale(sub(gW, aH), e.mass)), f.aW);
+          MgRigid += dot(cross(dR, scale(gW, e.mass)), f.aW);
+          MiFlap += e.mass * dot(cross(dF, inert(dF)), f.aW);
+          MiRigid += e.mass * dot(cross(dR, add(inert(dR), aH)), f.aW);
+        }
+        // Шарнир не передаёт втулке момента вокруг своей оси. Жёсткое тело лопасти Rapier ведёт вместе с втулкой, и момент,
+        // нужный для этого (инерция при поворотах корпуса — гироскопический, и ускорение втулки), шёл бы в корпус через
+        // соединение: у винта с моментом импульса около 7000 кг·м²/с это сотни Н·м на каждые 0,1 рад/с тангажа — ложная
+        // перекрёстная связь тангажа и крена. Этот момент прикладывается к лопасти снаружи; сам взмах считает его
+        // уравнение ниже.
+        const Mt = scale(f.aW, -(f.M + MgRigid) + MiRigid);
         b.b.rb.addTorque(Mt, true);
         addTo(this.extM0, Mt);
-        f.acc = (f.M + Mg) / f.Ib - r.omega * r.omega * (f.pre + f.beta);
+        f.acc = (f.M + Mg - MiFlap) / f.Ib;
         f.rate += this.dt * f.acc;
         f.beta += this.dt * f.rate;
       }
@@ -1309,10 +1516,35 @@ export class Sim {
       // Привод хвостового винта на авторотации — от несущего: его профильная мощность тормозит винт.
       const fw = r.actuator.freewheel && (this.channels[r.actuator.freewheel] ?? 0) > 0.5;
       const tc = this.tailCache.get(r.actuator.id);
-      if (fw && tc && Math.abs(r.omega) > 1) {
+      const free = this.tailRotorFree && !!r.actuator.tailRotor;
+      if ((fw || free) && tc && Math.abs(r.omega) > 1) {
         const Qb = scale(r.axisW, -Math.sign(r.omega) * tc.power / Math.abs(r.omega));
         r.hub.b.rb.addTorque(Qb, true);
         r.hub.parent!.b.rb.addTorque(scale(Qb, -1), true);
+      }
+      // Двигатель в свободном полёте: регулятор держит номинальные обороты (у R22 — 104 %), момент не больше, чем дают
+      // располагаемая мощность за вычетом потерь в трансмиссии на этих оборотах. Мощности не хватает — обороты падают.
+      if (free) {
+        const a = r.actuator;
+        const mastW = norm(rotate(r.hub.parent!.b.rb.rotation(), r.hub.joint!.axisParentBody));
+        const ramp = a.rampTime ?? 0;
+        const x = ramp > 0 ? Math.min(1, this.t / ramp) : 1;
+        const omT = a.rpm * RAD_PER_RPM * x * x * (3 - 2 * x);
+        const om = Math.abs(r.omega);
+        let Q = 0;
+        if (!fw) {
+          // Инерция винта вокруг вала — для коэффициентов регулятора (постоянная времени около 0,2 с).
+          const Ir = this.rotorInertia(r);
+          const e = omT - om;
+          this.govI = clamp(this.govI + (Ir / 0.5) * e * this.dt, 0, 1e9);
+          const Qmax = (this.powerAvailable / (1 + (this.spec.powerplant.losses ?? 0))) / Math.max(om, 0.3 * a.rpm * RAD_PER_RPM);
+          Q = clamp((Ir / 0.2) * e + this.govI, 0, Qmax);
+          if (Q >= Qmax) this.govI = Math.min(this.govI, Qmax); // без накопления на пределе
+        } else this.govI = 0;
+        const Qe = scale(mastW, Q * a.direction);
+        r.hub.b.rb.addTorque(Qe, true);
+        r.hub.parent!.b.rb.addTorque(scale(Qe, -1), true);
+        this.enginePower = Q * om;
       }
     }
 
@@ -1516,14 +1748,22 @@ export class Sim {
       const key = a.id;
       const cache = this.tailCache.get(key);
       const freewheel = !!a.freewheel && (this.channels[a.freewheel] ?? 0) > 0.5;
-      if (!cache || this.t - cache.t >= 0.05) {
+      if (!this.tailRotorFree && (!cache || this.t - cache.t >= 0.05)) {
         const res = tailRotorPower(a.tailRotor, Q / a.tailRotor.arm, this.rho, this.soundSpeed, om / omNom, this.mu);
         this.tailCache.set(key, { t: this.t, power: res.power, thetaDeg: res.thetaDeg, thrust: Q / a.tailRotor.arm });
       }
-      if (!freewheel) tail += this.tailCache.get(key)!.power; // на авторотации хвостовой винт крутит несущий (см. applyAero)
+      if (!freewheel) tail += this.tailCache.get(key)?.power ?? 0; // на авторотации хвостовой винт крутит несущий (см. applyAero)
     }
-    shaft += tail;
-    shaftNet += tail;
+    if (this.tailRotorFree && this.spec.actuators.some((a) => a.type === 'spinner' && a.tailRotor)) {
+      // Свободный полёт вертолёта: на валу — момент двигателя (хвостовой винт в нём уже есть: он нагружает несущий).
+      const tr = this.spec.actuators.find((a) => a.type === 'spinner' && a.tailRotor);
+      tail = this.tailCache.get(tr!.id)?.power ?? 0;
+      shaft = this.enginePower;
+      shaftNet = this.enginePower;
+    } else {
+      shaft += tail;
+      shaftNet += tail;
+    }
     this.sample.tailRotorPower = tail;
     this.sample.shaftPower = shaft;
     this.sample.shaftPowerNet = shaftNet;
@@ -1553,6 +1793,16 @@ export class Sim {
         return { at, s: this.subtree(k, at, gVec) };
       });
       const n = p.elements.length;
+      // Демпфирование изгиба воздухом — по текущей скорости (у крыла самолёта в полёте ζ ≈ 0,1–0,2, без него
+      // крыло после каждого движения руля звенело бы на первой форме с ζ = 0,03).
+      let zFlap = p.elastic?.zeta ?? STRUCTURAL_DAMPING;
+      const el0 = p.elastic;
+      if (el0?.cAU && el0.mModal) {
+        const U = Math.max(len(this.opts.wind), this.sample.airspeed);
+        const w1 = 2 * Math.PI * el0.f1;
+        const F = U > 0 ? theodorsen((w1 * (el0.chord ?? 1)) / (2 * U)).F : 1;
+        zFlap = Math.min(1, STRUCTURAL_DAMPING + (el0.cAU * U * F) / (2 * el0.mModal * w1));
+      }
       const G = p.elements.map((e) => sub(scale(sub(add(this.accAt(p.b, e.pW), this.flapAccAt(p, e.pW)), gVec), e.mass), e.dFm));
       let worst = { margin: Infinity, mode: 'none' as FailureMode, spanFrac: 0, yieldMargin: Infinity };
       // Накопление от законцовки к корню: F_i = F_{i+1} + G_i,
@@ -1599,7 +1849,7 @@ export class Sim {
             const lag = k === 2 || k === 5;
             const w = 2 * Math.PI * (lag ? el.fLag : el.f1);
             if (w * this.dt >= 0.5) return u;
-            const z = lag ? STRUCTURAL_DAMPING : el.zeta;
+            const z = lag ? STRUCTURAL_DAMPING : zFlap;
             d.v[k] += this.dt * (w * w * (u - d.x[k]) - 2 * z * w * d.v[k]);
             d.x[k] += this.dt * d.v[k];
             return Math.abs(d.x[k]) > Math.abs(u) ? d.x[k] : u;

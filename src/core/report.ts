@@ -69,8 +69,9 @@ export function buildReport(r: ProgramResult, spec: Spec): Report {
     row({
       key: 'margin', label: tr('Запас прочности, худший', 'Safety margin, worst'),
       value: tr(`${n(r.minMargin)} · нужно не меньше ${n(1.5)}, разрушение при 1`, `${n(r.minMargin)} · at least ${n(1.5)} required, failure at 1`),
-      note: tr(`${q(r.minMarginPart)} на ${pct(r.minMarginSpan)} % размаха — ${modeName(r.minMarginMode)}`, `${q(r.minMarginPart)} at ${pct(r.minMarginSpan)} % span — ${modeName(r.minMarginMode)}`),
-      level: r.minMargin < 1 ? 'bad' : r.minMargin < 1.5 ? 'warn' : 'ok',
+      note: tr(`${q(r.minMarginPart)} на ${pct(r.minMarginSpan)} % размаха — ${modeName(r.minMarginMode)}`, `${q(r.minMarginPart)} at ${pct(r.minMarginSpan)} % span — ${modeName(r.minMarginMode)}`) +
+        (r.strengthInfoOnly ? tr('; справочно — ', '; reference only — ') + r.strengthInfoOnly : ''),
+      level: r.strengthInfoOnly ? 'warn' : r.minMargin < 1 ? 'bad' : r.minMargin < 1.5 ? 'warn' : 'ok',
     });
   if (Number.isFinite(r.minYieldMargin))
     row({
@@ -218,6 +219,24 @@ export function buildReport(r: ProgramResult, spec: Spec): Report {
       value: r.endurance > 3600 ? tr(`${n(r.endurance / 3600)} ч`, `${n(r.endurance / 3600)} h`) : tr(`${n(r.endurance / 60)} мин`, `${n(r.endurance / 60)} min`),
       note: tr('весь запас, без резерва и без расхода на запуск, руление и набор', 'the whole supply, no reserve, no start-up, taxi or climb'),
     });
+  if (r.stress?.length) {
+    const passed = r.stress.filter((s) => s.pass).length;
+    const failed = r.stress.filter((s) => s.pass === false).length;
+    const judged = passed + failed, measured = r.stress.length - judged;
+    row({
+      key: 'stress', label: tr('Стресс-тесты (нормы лётной годности)', 'Stress tests (airworthiness standards)'),
+      value: tr(`пройдено ${passed} из ${judged}`, `${passed} of ${judged} passed`),
+      note: tr(`не пройдено ${failed}; без критерия (замеры, демонстрации) — ${measured}; критерий прочности — запас не меньше 1,5 на предельной нагрузке (§23.303/305, §27.303/305)`, `${failed} failed; without a criterion (measurements, demonstrations) — ${measured}; strength criterion — a margin of at least 1.5 at the limit load (§23.303/305, §27.303/305)`),
+      level: failed ? 'warn' : 'ok',
+    });
+    for (const s of r.stress)
+      row({
+        key: `stress_${s.id}`, label: s.name,
+        value: s.values.map(([k, x]) => `${k}: ${x}`).join('; '),
+        note: s.target + (s.note ? ' — ' + s.note : ''),
+        level: s.pass === false ? 'bad' : s.pass === null ? 'warn' : 'ok',
+      });
+  }
   if (r.flutter) {
     const fl = r.flutter;
     const vLim = Math.min(fl.vFlutter, fl.vDivergence);
@@ -290,7 +309,7 @@ export function comparisons(r: ProgramResult, need: number): string[] {
       `The vehicle's powerplant gives ${times(r.powerAvailable / ref.w)} ${ref.en}.`));
   }
   // Если деталь сломалась, запас в момент разрушения ≈ 1; во сколько раз нагрузка выше — по прогону без разрушения.
-  if (!r.breaks.length && Number.isFinite(r.minMargin) && r.minMargin < 1) out.push(overload(r.minMargin));
+  if (!r.breaks.length && Number.isFinite(r.minMargin) && r.minMargin < 1 && !r.strengthInfoOnly) out.push(overload(r.minMargin));
   const g = r.crewSustainedG;
   if (g >= CREW_LIMITS.sustained.hard)
     out.push(tr(`Длительная перегрузка ${n(g)} g: пилот истребителя в противоперегрузочном костюме выдерживает до 9 g, без костюма теряют сознание примерно с 5–6 g.`,

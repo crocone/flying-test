@@ -23,13 +23,40 @@ const blade = (id: string, z: number, rot: number): Part => ({
   structure: { section: 'box', material: 'steel4340', widthFrac: 0.4, heightFrac: 0.9, wall: 0.004, skinArealMass: 0, filled: true }, // за лонжероном — соты
 });
 
+// Хвостовое оперение R22 Beta II — по чертежу «External Dimensions» руководства по ТО (гл. 16, рис. 16-2; масштаб —
+// по габариту 259 in): стабилизатор размахом 34 in (на чертеже), хорда около 8 in, в 148 in за осью несущего винта,
+// 64 in над землёй; установка — нос вниз 2,8…3,3° (там же, описание версий: A044-1 stabilizer angle). Кили — верхний
+// около 18 in высотой и нижний около 17 in, хорды 9 → 6 in, на станции хвостового винта. Профили не опубликованы —
+// симметричные (оценка). Хорды и высоты килей — снятые с чертежа, ±1 in.
+const sym = { name: 'симметричный, как NACA 0012', cl0: 0, clAlpha: 5.7, clMax: 1.2, cd0: 0.009, k: 0.006, thickness: 0.12, polar: NACA0012 };
+const IN = 0.0254;
+const hstab = (side: 1 | -1): Part => ({
+  id: side > 0 ? 'stabR' : 'stabL', name: 'Стабилизатор', kind: 'wing', position: [-148 * IN, 64 * IN, 0], mass: 1,
+  aero: { side, span: 17 * IN, rootChord: 8 * IN, tipChord: 8 * IN, incidenceDeg: -3, airfoil: sym, sections: 4, induced: 'wing',
+    aspectRatio: 34 / 8, role: 'tail' },
+});
+const fin = (up: boolean): Part => {
+  const h = (up ? 18 : 17) * IN;
+  return {
+    id: up ? 'finUp' : 'finLow', name: up ? 'Верхний киль' : 'Нижний киль', kind: 'wing', position: [-172 * IN, (up ? 74 : 67) * IN, 0],
+    rotation: [up ? -90 : 90, 0, 0], mass: 1,
+    // Балка у корня работает как стенка (зеркало): удлинение 2·b²/S — верхняя оценка.
+    aero: { side: 1, span: h, rootChord: 9 * IN, tipChord: 6 * IN, incidenceDeg: 0, airfoil: sym, sections: 4, induced: 'wing',
+      aspectRatio: (2 * h * h) / (h * 7.5 * IN), role: 'tail' },
+  };
+};
+
 export const r22: Spec = {
   schema: 1,
   meta: { name: 'Robinson R22 Beta II', class: 'rotor', source: 'preset', notes: 'Эталон для проверки мощности на висении.' },
   environment: { name: 'Земля, МСА', g: 9.81, rho: 1.225, soundSpeed: 340.3 },
   parts: [
-    // Кабина с двигателем: высота 69 in от низа полозьев (POH), ширина 44 in; центр — под осью винта (центровка).
-    { id: 'fuselage', name: 'Кабина, двигатель, экипаж', kind: 'body', position: [0, 0.95, 0],
+    // Кабина с двигателем: высота 69 in от низа полозьев (POH), ширина 44 in. Центр масс кабины — на 0,215 м впереди оси
+    // винта: так центровка всего вертолёта — станция 98 in (ось винта — станция 100, начало отсчёта POH — 100 in впереди
+    // неё; допустимый диапазон по графику POH, разд. 2, стр. 2-5 — примерно 95…102 in). Раньше кабина стояла точно под
+    // осью, и центровка с балкой и оперением уходила на 5,4 in назад — за ось винта, вне диапазона: на закреплённом корпусе
+    // это не видно, в свободном полёте — 1000 Н·м на кабрирование.
+    { id: 'fuselage', name: 'Кабина, двигатель, экипаж', kind: 'body', position: [0.215, 0.95, 0],
       shape: { type: 'ellipsoid', size: [3.2, 1.6, 1.1] }, mass: 550, dragArea: 0.59 },
     // Хвостовая балка — до оси хвостового винта (172 in от оси несущего); диаметр около 0,2 м и масса — оценки.
     { id: 'boom', name: 'Хвостовая балка', kind: 'body', position: [-2.8, 1.5, 0], shape: { type: 'ellipsoid', size: [3.2, 0.2, 0.2] },
@@ -37,12 +64,17 @@ export const r22: Spec = {
     { id: 'hub', name: 'Втулка', kind: 'hub', position: [0, HUB_Y, 0], shape: { type: 'cylinder', size: [0.4, 0.3, 0.4] }, mass: 20 },
     blade('blade1', ROOT, 0),
     blade('blade2', -ROOT, 180),
+    hstab(1), hstab(-1), fin(true), fin(false),
   ],
   joints: [
     { id: 'mast', type: 'revolute', parent: 'fuselage', child: 'hub', axis: [0, 1, 0] },
     { id: 'jboom', type: 'fixed', parent: 'fuselage', child: 'boom' },
     { id: 'jb1', type: 'fixed', parent: 'hub', child: 'blade1' },
     { id: 'jb2', type: 'fixed', parent: 'hub', child: 'blade2' },
+    { id: 'jsR', type: 'fixed', parent: 'boom', child: 'stabR' },
+    { id: 'jsL', type: 'fixed', parent: 'boom', child: 'stabL' },
+    { id: 'jfU', type: 'fixed', parent: 'boom', child: 'finUp' },
+    { id: 'jfL', type: 'fixed', parent: 'boom', child: 'finLow' },
   ],
   // Хвостовой винт — по POH (разд. 1, описание): 2 лопасти, диаметр 42 in, хорда 4 in постоянная, без крутки, концевая
   // скорость 622 ft/s при 104 % — 3394 об/мин. Плечо от оси несущего до оси хвостового — 172 in по трём видам POH
@@ -53,7 +85,8 @@ export const r22: Spec = {
   // смотреть сверху (наступающая лопасть справа). Циклический шаг — от автомата перекоса; обгонная муфта — авторотация.
   actuators: [{ id: 'rotor', type: 'spinner', joint: 'mast', rpm: 530, direction: 1, rampTime: 4,
     flapping: true, cyclic: { cos: 'cyclicLat', sin: 'cyclicLon' }, freewheel: 'freewheel',
-    tailRotor: { radius: 0.5334, blades: 2, chord: 0.1016, rpm: 3394, arm: 4.37, rootFrac: 0.2,
+    // Центр хвостового винта — по чертежу гл. 16: 174 in за осью несущего (POH: 172 in), 73 in над землёй.
+    tailRotor: { radius: 0.5334, blades: 2, chord: 0.1016, rpm: 3394, arm: 4.37, rootFrac: 0.2, at: [-172 * 0.0254, 73 * 0.0254, 0], channel: 'pedal',
       airfoil: { name: 'симметричный, как NACA 0012', cl0: 0, clAlpha: 5.7, clMax: 1.2, cd0: 0.009, k: 0.006, thickness: 0.12, polar: NACA0012 } } }],
   // Двигатель дросселирован с 180 до 131 л. с. и держит эту мощность до высот висения — падения с высотой нет.
   // Мотор O-360-J2A дросселирован: разрешено 131 л. с. на взлёте. Полный газ у земли при 2700 об/мин — около 180 л. с.:
@@ -62,10 +95,15 @@ export const r22: Spec = {
   powerplant: { power: 97.7e3, losses: 0.05, lapse: 'piston', note: 'Lycoming O-360-J2A: взлётная 131 л. с. (5 мин), длительная 124 л. с.',
     engine: { type: 'piston', fullThrottleSL: 180 * 745.7, lapseK: 1.1, mixture: 1 } },
   crew: { part: 'fuselage', seats: [[0.6, 0.1, 0.3]] },
+  // VNE 102 KIAS до 3000 ft (POH, разд. 2); обороты без мотора 90–110 % (POH). Предельная перегрузка R22 не опубликована —
+  // по умолчанию норм §27.337 (+3,5).
+  limits: { vne: 102 * 0.514444, rotorRpmOff: [0.9, 1.1] },
   controls: [
     { channel: 'collective', label: 'Общий шаг, °', role: 'lift', min: 0, max: 18, initial: 12, gain: 0.4 },
     { channel: 'cyclicLon', label: 'Продольный циклический шаг, ° (− — диск вперёд)', role: 'pitch', min: -12, max: 12, initial: 0 },
     { channel: 'cyclicLat', label: 'Поперечный циклический шаг, ° (+ — диск влево)', role: 'roll', min: -8, max: 8, initial: 0 },
+    // Педали — шаг хвостового винта. Диапазон не опубликован: −8…+20° — оценка для хвостовых винтов лёгких вертолётов.
+    { channel: 'pedal', label: 'Педали: шаг хвостового винта, °', role: 'yaw', min: -8, max: 20, initial: 8 },
   ],
   assumptions: [
     { path: 'powerplant.losses', value: 0.05, label: 'Потери в трансмиссии (ремни, главный и хвостовой редукторы), доля мощности', confidence: 'low', origin: 'estimated',

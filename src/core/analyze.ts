@@ -123,7 +123,7 @@ export function analyze(r: ProgramResult, names: Record<string, string> = {}): V
     if (level === 'lethal' || level === 'injurious') reasons.push(crewText(r));
     return { kind: 'breaks', title: verdictName('breaks'), reasons: reasons.slice(0, 3), warnings, crewLevel: level };
   }
-  if (Number.isFinite(r.minMargin) && r.minMargin < 1) {
+  if (Number.isFinite(r.minMargin) && r.minMargin < 1 && !r.strengthInfoOnly) {
     reasons.push(tr(`Перегрузка конструкции: ${margin} (разрушение отключено).`, `Structure overloaded: ${margin} (breaking disabled).`));
     return { kind: 'breaks', title: verdictName('breaks'), reasons, warnings, crewLevel: level };
   }
@@ -222,18 +222,24 @@ export function analyze(r: ProgramResult, names: Record<string, string> = {}): V
   }
   if (noLift.length) return { kind: 'no-lift', title: verdictName('no-lift'), reasons: noLift.slice(0, 3), warnings, crewLevel: level };
 
-  if (r.minMargin < 1.5) marginal.push(tr(`${capital(margin)}; в авиации нужен запас не меньше 1,5.`, `${capital(margin)}; aviation requires a margin of at least 1.5.`));
+  if (r.strengthInfoOnly) warnings.push(tr(`Прочность справочно (${margin}): ${r.strengthInfoOnly}.`, `Strength for reference only (${margin}): ${r.strengthInfoOnly}.`));
+  else if (r.minMargin < 1.5) marginal.push(tr(`${capital(margin)}; в авиации нужен запас не меньше 1,5.`, `${capital(margin)}; aviation requires a margin of at least 1.5.`));
   if (r.fatigue.hours < 1) marginal.push(tr(
     `Усталостный ресурс ${n(r.fatigue.hours * 60)} мин: ${q(r.fatigue.part)} на ${pct(r.fatigue.spanFrac)} % размаха.`,
     `Fatigue life ${n(r.fatigue.hours * 60)} min: ${q(r.fatigue.part)} at ${pct(r.fatigue.spanFrac)} % span.`));
   if (level === 'injurious') marginal.push(crewText(r));
-  if (r.minYieldMargin < 1) marginal.push(tr(
+  if (r.minYieldMargin < 1 && !r.strengthInfoOnly) marginal.push(tr(
     `Металл течёт: напряжение выше предела текучести в ${raz(1 / r.minYieldMargin, 2)} — остаточная деформация.`,
     `The metal yields: stress is ${raz(1 / r.minYieldMargin, 2)} the yield strength — permanent deformation.`));
+  const stressFailed = r.stress?.filter((s) => s.pass === false) ?? [];
+  if (r.stress && stressFailed.length)
+    marginal.unshift(tr(
+      `Стресс-тесты по нормам лётной годности: не пройдено ${stressFailed.length} из ${r.stress.filter((s) => s.pass !== null).length} — ${stressFailed.map((s) => s.name).join('; ')}.`,
+      `Airworthiness stress tests: ${stressFailed.length} of ${r.stress.filter((s) => s.pass !== null).length} failed — ${stressFailed.map((s) => s.name).join('; ')}.`));
   if (marginal.length) return { kind: 'marginal', title: verdictName('marginal'), reasons: marginal.slice(0, 3), warnings, crewLevel: level };
 
   const ok: string[] = [];
-  if (Number.isFinite(r.minMargin)) {
+  if (Number.isFinite(r.minMargin) && !r.strengthInfoOnly) {
     ok.push(capital(margin) + '.');
     // Усталость считается по полному циклу в конце испытания.
     if (!r.finished) {
@@ -241,6 +247,11 @@ export function analyze(r: ProgramResult, names: Record<string, string> = {}): V
     } else if (Number.isFinite(r.fatigue.hours) && r.fatigue.hours < 1e6) ok.push(tr(`Усталостный ресурс около ${n(r.fatigue.hours)} ч.`, `Fatigue life about ${n(r.fatigue.hours)} h.`));
     else if (Number.isFinite(r.fatigue.hours)) ok.push(tr('Усталостный ресурс практически не ограничен.', 'Fatigue life is practically unlimited.'));
     else if (!r.fatigue.noData.length) ok.push(tr('Напряжения ниже предела выносливости — усталость не грозит.', 'Stresses are below the endurance limit — no fatigue risk.'));
+  }
+  if (r.stress) {
+    const passed = r.stress.filter((s) => s.pass).length;
+    const judged = r.stress.filter((s) => s.pass !== null).length;
+    ok.splice(1, 0, tr(`Стресс-тесты по нормам лётной годности: пройдено ${passed} из ${judged}.`, `Airworthiness stress tests: ${passed} of ${judged} passed.`));
   }
   if (r.hover?.achieved) ok.push(tr(`Висение удержано, мощность ${n(r.hover.power / 1e3)} кВт из ${n(r.powerAvailable / 1e3)} кВт.`, `Hover held, power ${n(r.hover.power / 1e3)} kW of ${n(r.powerAvailable / 1e3)} kW.`));
   if (r.free && !r.free.grounded)

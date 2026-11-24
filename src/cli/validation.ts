@@ -20,7 +20,7 @@ import { cessna172 } from '../presets/cessna172.ts';
 import { r22 } from '../presets/r22.ts';
 import { quadcopter } from '../presets/quadcopter.ts';
 import { smartbird, snowbird } from '../presets/flappers.ts';
-import { v3 } from '../core/vec.ts';
+import { copy, unrotate, v3 } from '../core/vec.ts';
 import { COAXIAL_INTERFERENCE } from '../core/design.ts';
 import { dynamicStallLoops } from './validation-dynstall.ts';
 import { NACA0012, NACA0015 } from '../core/polar-data.ts';
@@ -66,6 +66,59 @@ export function validationChecks(RAPIER: typeof RAPIER_NS, rep: Reporter) {
   if (on('heli')) heli(RAPIER, rep);
   if (on('structure')) structureChecks(RAPIER, rep);
   if (on('human')) humanChecks(rep);
+  if (on('stress')) stressChecks(RAPIER, rep);
+  if (on('helistress')) heliStressChecks(RAPIER, rep);
+}
+
+// ---------- 16. Стресс-тесты R22 в свободном полёте (нормы FAR 27) против POH и бюллетеней Robinson ----------
+function heliStressChecks(RAPIER: typeof RAPIER_NS, { section, flag, info }: Reporter) {
+  section('R22 в свободном полёте: стресс-тесты (программа «Стресс-тесты») против POH и бюллетеней Robinson');
+  const t0 = Date.now();
+  const r = run(RAPIER, applyAssumptions(r22), 'stress', { breakable: false });
+  const st = (id: string) => r.stress?.find((s) => s.id === id);
+  const val = (id: string, key: string) => st(id)?.values.find(([k]) => k.startsWith(key))?.[1] ?? '';
+  const num = (s: string) => parseFloat(s.replace(/[\s   ]/g, '').replace(',', '.').replace('−', '-'));
+  info(`шагов ${r.stress?.length ?? 0}; ${((Date.now() - t0) / 1000).toFixed(0)} с счёта, ${r.simTime.toFixed(0)} с полёта`);
+  for (const s of r.stress ?? []) info(`${s.pass === null ? '—' : s.pass ? 'да ' : 'НЕТ'} ${s.name}: ${s.values.map(([k, x]) => `${k} ${x}`).join('; ')}`);
+  // Сертифицированный вертолёт: висит вне влияния земли на 600 м при наибольшей массе (POH: потолок висения вне влияния
+  // земли при 1370 lb — несколько тысяч футов), с запасом педалей.
+  flag('висение вне влияния земли на 600 м при 1370 lb: мощности и педалей хватает (POH, разд. 5)', st('hHover')?.pass === true, val('hHover', 'Мощность') + '; ' + val('hHover', 'Педали'));
+  flag('отказ двигателя на 0,9·VNE с задержкой 1 с: установившиеся обороты 90–110 % (§27.143(e), POH)', st('hPowerFail')?.pass === true, val('hPowerFail', 'Обороты на установившейся'));
+  const sink = num(val('hPowerFail', 'Установившееся снижение').split('(')[1] ?? 'NaN');
+  flag('авторотация на 65 узлах: снижение меньше 1500 ft/min (Robinson SN-38)', sink < 1500, `${sink.toFixed(0)} ft/min`);
+  flag('малая перегрузка: вертолёт кренится вправо (POH R22, SN-11)', /вправо/.test(val('hLowG', 'Крен')), val('hLowG', 'Крен'));
+  flag('на 1,1·VNE остаётся запас ручки вперёд (§27.175; вертолёт сертифицирован)', st('hVne')?.pass === true, val('hVne', 'Запас ручки'));
+  info('прочность лопастей в полёте вперёд — справочно (эквивалентный лонжерон, подвеска втулки не опубликована); перегрузки ручкой, порывы и педали — замеры без критерия: измерений R22 нет');
+}
+
+// ---------- 15. Стресс-тесты Cessna 172S по нормам FAR 23 против POH и самих норм ----------
+function stressChecks(RAPIER: typeof RAPIER_NS, { section, flag, diverge, info }: Reporter) {
+  section('Cessna 172S: стресс-тесты по нормам FAR 23 (программа «Стресс-тесты») против POH, рис. 5-3, и норм');
+  const t0 = Date.now();
+  const r = run(RAPIER, applyAssumptions(cessna172), 'stress', { breakable: false });
+  const st = (id: string) => r.stress?.find((s) => s.id === id);
+  const val = (id: string, key: string) => {
+    const v = st(id)?.values.find(([k]) => k.startsWith(key))?.[1] ?? '';
+    return parseFloat(v.replace(/[\s   ]/g, '').replace(',', '.').replace('−', '-'));
+  };
+  info(`шагов ${r.stress?.length ?? 0}, пройдено ${r.stress?.filter((s) => s.pass).length ?? 0}; ${((Date.now() - t0) / 1000).toFixed(0)} с счёта, ${r.simTime.toFixed(0)} с полёта`);
+  for (const s of r.stress ?? []) info(`${s.pass === null ? '—' : s.pass ? 'да ' : 'НЕТ'} ${s.name}: ${s.values.map(([k, x]) => `${k} ${x}`).join('; ')}${s.note ? ' — ' + s.note : ''}`);
+  // POH рис. 5-3 (2550 lb, газ убран, закрылки убраны): 0° — 53 KCAS, 30° — 57 KCAS; «потеря высоты при выводе — до 230 ft».
+  // Допуск 5 %: в POH скорости округлены до узла, торможение «около 1 узла в секунду»; срыв в программе — по доле
+  // сорванных сечений крыла (30 %), в сертификации — по клевку носом или упору ручки.
+  const why = 'срыв в программе определяется по доле сорванных сечений крыла, а не по клевку носом; торможение 1 узел/с держит автопилот';
+  diverge('сваливание с прямой, газ убран: скорость (POH: 53 KCAS)', val('stall', 'Скорость сваливания'), 53, 0.05, why, ' kt');
+  diverge('сваливание в развороте 30°: скорость (POH: 57 KCAS)', val('turnStall', 'Скорость сваливания'), 57, 0.05, why, ' kt');
+  const hLoss = val('stall', 'Потеря высоты');
+  flag('потеря высоты при выводе из сваливания не больше 230 ft = 70 м (POH, рис. 5-3)', hLoss <= 70, `${hLoss.toFixed(0)} м`);
+  flag('сваливания в развороте: крен после срыва в пределах §23.203 (самолёт сертифицирован)', !!st('turnStall')?.pass && !!st('accStall')?.pass,
+    `${st('turnStall')?.values[1]?.[1]}; ${st('accStall')?.values[1]?.[1]}`);
+  const rpm = val('dive', 'Обороты винта');
+  flag('пикирование до VD с убранным газом: обороты не выше 110 % номинальных — 2970 об/мин (§23.33(b)(2), самолёт сертифицирован)', rpm <= 2970, `${rpm.toFixed(0)} об/мин`);
+  info(`порывы ±50 ft/s на VC: в модели ${val('gustUp', 'Перегрузка в модели')} и ${val('gustDown', 'Перегрузка в модели')}, по формуле норм (§23.341) ${val('gustUp', 'По формуле')} и ${val('gustDown', 'По формуле')}. `
+    + 'Формула норм — расчётная: коэффициент ослабления порыва K_g получен по самолётам 1950-х для одного поступательного движения; в модели самолёт входит в порыв носом и ещё поворачивается по тангажу');
+  info('запасы прочности в стресс-тестах — у эквивалентного консольного лонжерона (стенка — оценка, подкос на прочность не влияет): это не проверка конструкции настоящего самолёта');
+  if (st('spin')?.pass === null) info('штопор: модель по полосам крыла в штопор не входит — нужны данные продувок на вращающемся стенде (rotary balance), их в модели нет');
 }
 
 // ---------- 14. Человек: мощность по длительности (и переносимость перегрузок) против измерений ----------
@@ -442,6 +495,40 @@ function sixdof(RAPIER: typeof RAPIER_NS, { section, flag, diverge, info }: Repo
     diverge(`затухание фугоиды ζ: по экстремумам рис. 5 AAIB — ${ref.zeta.toFixed(2)} («сильно задемпфирована»)`, m.zeta, ref.zeta, 0.3,
       'чтение графика ±3 kt на размахах 22–53 kt даёт ±0,04 по ζ', '');
     info(`скорость после отпускания, KIAS: модель ${ex.map((e) => e.x.toFixed(0)).join(' → ')}; AAIB 78 → 131 → 95 → 117 (из снижения на 135)`);
+  }
+
+  section('Крен на полных элеронах: Cessna 172S против лётного испытания Cessna 177B (NASA CR-2337, табл. IV)');
+  {
+    // Измерений крена у самой C172 в открытых данных нет. Ближайший измеренный — Cessna 177B Cardinal (тот же класс:
+    // размах 36 ft, крыло 175 ft²; но консольное крыло без подкоса и свои элероны): полные элероны как можно быстрее,
+    // педали закреплены, около 4000 ft. 120 mph IAS (≈104 kt): наибольшая угловая скорость 54,5 °/с, pb/2V 0,090–0,096;
+    // 80 mph (≈70 kt): 34,8 °/с, pb/2V 0,083–0,090. Расчётные модели C172: JSBSim c172x (C_lp = −0,47, C_lδa = 0,23) даёт
+    // pb/2V ≈ 0,15, UIUC (C_lδa = 0,178) — 0,12; без учёта скольжения обе — верхняя граница.
+    const roll = (vKt: number) => {
+      const sig = Math.sqrt(atmosphere(cessna172.environment, 1219).rho / cessna172.environment.rho);
+      const vTas = (vKt * KT) / sig;
+      const sim = airborne(RAPIER, applyAssumptions(cessna172), 1219, vTas);
+      const pilot = new Pilot(sim);
+      const trim = trimLevel(sim, pilot, vTas, 200);
+      const t0 = sim.t;
+      let pMax = 0, t30 = NaN;
+      while (sim.t < t0 + 4) {
+        sim.channels.roll = trim.channels.roll + 20 * Math.min(1, (sim.t - t0) / 0.2);
+        sim.step();
+        const p = Math.abs(unrotate(sim.root.b.rb.rotation(), copy(sim.root.b.rb.angvel())).x);
+        pMax = Math.max(pMax, p);
+        if (Number.isNaN(t30) && Math.abs(sim.sample.rollDeg) >= 30) t30 = sim.t - t0;
+      }
+      sim.free();
+      return { p: (pMax * 180) / Math.PI, pb2v: (pMax * 11.0) / (2 * vTas), t30 };
+    };
+    const r104 = roll(104), r70 = roll(70);
+    const why = 'измерение — у другого самолёта (Cessna 177B: консольное крыло, свои элероны); щели элеронов и обратное рыскание '
+      + 'с закреплёнными педалями (скольжение 8–11° в испытании) в модели не учтены; расчётные модели C172 тоже дают 0,12–0,15';
+    diverge('pb/2V на 104 kt: 0,093 (Cessna 177B, NASA CR-2337)', r104.pb2v, 0.093, 0.1, why, '');
+    diverge('pb/2V на 70 kt: 0,087 (Cessna 177B, NASA CR-2337)', r70.pb2v, 0.087, 0.1, why, '');
+    info(`крен 30° через ${r104.t30.toFixed(2)} с на 104 kt и ${r70.t30.toFixed(2)} с на 70 kt (177B: 0,70–0,74 и 1,02–1,41 с); `
+      + `наибольшая угловая скорость ${r104.p.toFixed(0)} и ${r70.p.toFixed(0)} °/с (177B: 54,5 и 34,8)`);
   }
 
   section('Спираль Cessna 172S против лётного испытания AAIB: органы управления закреплены, небольшая правая педаль');

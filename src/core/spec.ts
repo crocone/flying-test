@@ -31,7 +31,8 @@ export interface Spec {
   // Расчётная эксплуатационная перегрузка для манёвра в максимальном режиме
   // (нормальная категория самолётов — 3,8). Конструкция должна выдержать её с запасом 1,5.
   // cruiseSpeed — скорость набегающего потока в программе «полёт в трубе», м/с.
-  limits?: { loadFactor?: number; cruiseSpeed?: number };
+  // vne — непревышаемая скорость (приборная), м/с; rotorRpmOff — допустимые обороты несущего винта без мотора, доли номинала.
+  limits?: { loadFactor?: number; cruiseSpeed?: number; vne?: number; rotorRpmOff?: [number, number] };
   assumptions: Assumption[];
 }
 
@@ -105,7 +106,11 @@ export interface AeroSurface {
   // как у дифференциальных элеронов). from…to — участок размаха (доли от корня), где стоит рулевая поверхность.
   // Для закрылка (руля, элерона) deg — отклонение, умноженное на эффективность τ (теория тонкого профиля,
   // τ = 1 − (θf − sin θf)/π, θf = arccos(2·c_f/c − 1)).
-  control?: { channel: string; deg: number; degNeg?: number; from?: number; to?: number };
+  // chordFrac — доля хорды рулевой поверхности c_f/c (простой закрылок, руль, элерон). Задана — к теории добавляются две
+  // поправки DATCOM (разд. 6.1.1.1) по продувкам: вязкая (реальный руль слабее теории тонкого профиля) и нелинейная
+  // K'(δ) — на больших отклонениях поток срывается с отклонённой части. deg тогда — по-прежнему отклонение × τ, а канал —
+  // угол отклонения в градусах.
+  control?: { channel: string; deg: number; degNeg?: number; from?: number; to?: number; chordFrac?: number };
   feathering?: { channel: string; maxDeg: number; actuator: string; phaseDeg?: number; mode?: 'paddle' | 'sine'; distribution?: 'uniform' | 'linear' };
   addedMass?: boolean; // нестационарная присоединённая масса воздуха (машущее крыло)
   // Нестационарное обтекание: подъёмная сила отстаёт от угла атаки (функция Вагнера).
